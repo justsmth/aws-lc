@@ -39,7 +39,7 @@
     ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) || \
      defined(OPENSSL_AARCH64))
 
-#  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#  include "../../../third_party/s2n-bignum/include/s2n-bignum.h"
 
 #  define P384_USE_S2N_BIGNUM_FIELD_ARITH 1
 #  define P384_USE_64BIT_LIMBS_FELEM 1
@@ -95,31 +95,31 @@ static inline uint8_t p384_use_s2n_bignum_alt(void) {
 }
 #endif
 
-#define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
-#define p384_felem_sub(out, in0, in1)   bignum_sub_p384(out, in0, in1)
-#define p384_felem_opp(out, in0)        bignum_neg_p384(out, in0)
-#define p384_felem_to_bytes(out, in0)   bignum_tolebytes_6(out, in0)
-#define p384_felem_from_bytes(out, in0) bignum_fromlebytes_6(out, in0)
+#define p384_felem_add(out, in0, in1)   bignum_add_p384(out, (uint64_t *)in0, (uint64_t *)in1)
+#define p384_felem_sub(out, in0, in1)   bignum_sub_p384(out, (uint64_t *)in0, (uint64_t *)in1)
+#define p384_felem_opp(out, in0)        bignum_neg_p384(out, (uint64_t *)in0)
+#define p384_felem_to_bytes(out, in0)   bignum_tolebytes_6(out, (uint64_t *)in0)
+#define p384_felem_from_bytes(out, in0) bignum_fromlebytes_6(out, (uint8_t *)in0)
 
 // The following four functions need bmi2 and adx support.
 #define p384_felem_mul(out, in0, in1) \
-  if (p384_use_s2n_bignum_alt()) bignum_montmul_p384_alt(out, in0, in1); \
-  else bignum_montmul_p384(out, in0, in1);
+  if (p384_use_s2n_bignum_alt()) bignum_montmul_p384_alt(out, (uint64_t *)in0, (uint64_t *)in1); \
+  else bignum_montmul_p384(out, (uint64_t *)in0, (uint64_t *)in1);
 
 #define p384_felem_sqr(out, in0) \
-  if (p384_use_s2n_bignum_alt()) bignum_montsqr_p384_alt(out, in0); \
-  else bignum_montsqr_p384(out, in0);
+  if (p384_use_s2n_bignum_alt()) bignum_montsqr_p384_alt(out, (uint64_t *)in0); \
+  else bignum_montsqr_p384(out, (uint64_t *)in0);
 
 #define p384_felem_to_mont(out, in0) \
-  if (p384_use_s2n_bignum_alt()) bignum_tomont_p384_alt(out, in0); \
-  else bignum_tomont_p384(out, in0);
+  if (p384_use_s2n_bignum_alt()) bignum_tomont_p384_alt(out, (uint64_t *)in0); \
+  else bignum_tomont_p384(out, (uint64_t *)in0);
 
 #define p384_felem_from_mont(out, in0) \
-  if (p384_use_s2n_bignum_alt()) bignum_deamont_p384_alt(out, in0); \
-  else bignum_deamont_p384(out, in0);
+  if (p384_use_s2n_bignum_alt()) bignum_deamont_p384_alt(out, (uint64_t *)in0); \
+  else bignum_deamont_p384(out, (uint64_t *)in0);
 
 static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
-  return bignum_nonzero_6(in1);
+  return bignum_nonzero_6((uint64_t *)in1);
 }
 
 #else // P384_USE_S2N_BIGNUM_FIELD_ARITH
@@ -167,7 +167,7 @@ static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
   bn_words_to_little_endian(tmp, P384_EC_FELEM_BYTES, in->words, P384_EC_FELEM_WORDS);
   p384_felem_from_bytes(out, tmp);
 #else
-  p384_felem_from_bytes(out, (const uint8_t *)in->words);
+  p384_felem_from_bytes(out, in->words);
 #endif
 }
 

@@ -40,7 +40,7 @@
     ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) || \
      defined(OPENSSL_AARCH64))
 
-#  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#  include "../../../third_party/s2n-bignum/include/s2n-bignum.h"
 #  define P521_USE_S2N_BIGNUM_FIELD_ARITH 1
 
 #else
@@ -97,20 +97,20 @@ static inline uint8_t p521_use_s2n_bignum_alt(void) {
 #endif
 
 // s2n-bignum implementation of field arithmetic
-#define p521_felem_add(out, in0, in1)   bignum_add_p521(out, in0, in1)
-#define p521_felem_sub(out, in0, in1)   bignum_sub_p521(out, in0, in1)
-#define p521_felem_opp(out, in0)        bignum_neg_p521(out, in0)
-#define p521_felem_to_bytes(out, in0)   bignum_tolebytes_p521(out, in0)
-#define p521_felem_from_bytes(out, in0) bignum_fromlebytes_p521(out, in0)
+#define p521_felem_add(out, in0, in1)   bignum_add_p521(out, (uint64_t *)in0, (uint64_t *)in1)
+#define p521_felem_sub(out, in0, in1)   bignum_sub_p521(out, (uint64_t *)in0, (uint64_t *)in1)
+#define p521_felem_opp(out, in0)        bignum_neg_p521(out,(uint64_t *)in0)
+#define p521_felem_to_bytes(out, in0)   bignum_tolebytes_p521(out, (uint64_t *)in0)
+#define p521_felem_from_bytes(out, in0) bignum_fromlebytes_p521(out, (uint8_t *)in0)
 
 // The following two functions need bmi2 and adx support.
 #define p521_felem_mul(out, in0, in1) \
-  if (p521_use_s2n_bignum_alt()) bignum_mul_p521_alt(out, in0, in1); \
-  else bignum_mul_p521(out, in0, in1);
+  if (p521_use_s2n_bignum_alt()) bignum_mul_p521_alt(out, (uint64_t *)in0, (uint64_t *)in1); \
+  else bignum_mul_p521(out, (uint64_t *)in0, (uint64_t *)in1);
 
 #define p521_felem_sqr(out, in0) \
-  if (p521_use_s2n_bignum_alt()) bignum_sqr_p521_alt(out, in0); \
-  else bignum_sqr_p521(out, in0);
+  if (p521_use_s2n_bignum_alt()) bignum_sqr_p521_alt(out, (uint64_t *)in0); \
+  else bignum_sqr_p521(out, (uint64_t *)in0);
 
 #else // P521_USE_S2N_BIGNUM_FIELD_ARITH
 
@@ -221,7 +221,7 @@ static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
   bn_words_to_little_endian(tmp, P521_EC_FELEM_BYTES, in->words, P521_EC_FELEM_WORDS);
   p521_felem_from_bytes(out, tmp);
 #else
-  p521_felem_from_bytes(out, (const uint8_t *)in->words);
+  p521_felem_from_bytes(out, in->words);
 #endif
 }
 

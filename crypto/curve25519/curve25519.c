@@ -60,7 +60,7 @@
       defined(OPENSSL_AARCH64)) &&                                             \
      (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                     \
      !defined(OPENSSL_NO_ASM)
-#include "../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#include "../../third_party/s2n-bignum/include/s2n-bignum.h"
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif
 
@@ -193,13 +193,12 @@ static void x25519_s2n_bignum(uint8_t out_shared_key[32],
   private_key_internal_demask[31] |= 64;
 
 #if defined(OPENSSL_X86_64)
-
   if (curve25519_s2n_bignum_no_alt_capable() == 1) {
     curve25519_x25519_byte(out_shared_key, private_key_internal_demask,
-      peer_public_value);
+           (uint8_t *)peer_public_value);
   } else if (curve25519_s2n_bignum_alt_capable() == 1) {
     curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
-      peer_public_value);
+           (uint8_t *)peer_public_value);
   } else {
     abort();
   }
