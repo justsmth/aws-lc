@@ -165,6 +165,20 @@ OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
 extern uint32_t OPENSSL_armcap_P;
 extern uint8_t OPENSSL_cpucap_initialized;
 
+// Normalize some older feature flags to their modern ACLE values.
+// https://developer.arm.com/architectures/system-architectures/software-standards/acle
+#if defined(__ARM_NEON__) && !defined(__ARM_NEON)
+#define __ARM_NEON 1
+#endif
+#if defined(__ARM_FEATURE_CRYPTO)
+#if !defined(__ARM_FEATURE_AES)
+#define __ARM_FEATURE_AES 1
+#endif
+#if !defined(__ARM_FEATURE_SHA2)
+#define __ARM_FEATURE_SHA2 1
+#endif
+#endif
+
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit.
 // If this is known statically, it is a constant inline function.
 // Otherwise, the capability is checked at runtime by checking the corresponding
@@ -172,15 +186,68 @@ extern uint8_t OPENSSL_cpucap_initialized;
 // |CRYPTO_is_ARMv8_AES_capable| and |CRYPTO_is_ARMv8_PMULL_capable|
 // for checking the support for AES and PMULL instructions, respectively.
 OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP_NEON)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
   return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
+#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP_AES)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
   return (OPENSSL_armcap_P & ARMV8_AES) != 0;
+#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP_PMULL)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
   return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA1_capable(void) {
+  // SHA-1 and SHA-2 (only) share |__ARM_FEATURE_SHA2| but otherwise
+  // are dealt with independently.
+#if defined(OPENSSL_STATIC_ARMCAP_SHA1)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return (OPENSSL_armcap_P & ARMV8_SHA1) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA256_capable(void) {
+  // SHA-1 and SHA-2 (only) share |__ARM_FEATURE_SHA2| but otherwise
+  // are dealt with independently.
+#if defined(OPENSSL_STATIC_ARMCAP_SHA256)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return (OPENSSL_armcap_P & ARMV8_SHA256) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA512_capable(void) {
+// There is no |OPENSSL_STATIC_ARMCAP_SHA512|.
+//#if defined(OPENSSL_STATIC_ARMCAP_SHA512)
+//  return 1;
+//#elif defined(OPENSSL_STATIC_ARMCAP)
+//  return 0;
+//#else
+  return (OPENSSL_armcap_P & ARMV8_SHA512) != 0;
+//#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
@@ -193,6 +260,8 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M1) != 0;
 }
+
+
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
 
