@@ -5731,6 +5731,13 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // is intentionally not supported in AWS-LC.
 #define SSL_VERIFY_CLIENT_ONCE 0
 
+// The following are not supported in AWS-LC.
+// TODO: elaoborate
+#define SSL_OP_TLSEXT_PADDING 0
+#define SSL_OP_SAFARI_ECDHE_ECDSA_BUG 0
+#define SSL_OP_CRYPTOPRO_TLSEXT_BUG 0
+
+
 // The following have no effect in both AWS-LC and OpenSSL.
 #define SSL_OP_EPHEMERAL_RSA 0
 #define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0
