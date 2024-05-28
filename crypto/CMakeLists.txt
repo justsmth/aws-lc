@@ -786,7 +786,7 @@ if(BUILD_TESTING)
   if(MSVC)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   else()
-    target_compile_options(${CRYPTO_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
+    target_compile_options(${CRYPTO_TEST_EXEC} PUBLIC -Wno-deprecated-declarations -std=c++14)
   endif()
   add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
 

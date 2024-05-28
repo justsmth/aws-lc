@@ -69,6 +69,7 @@ if(BUILD_TESTING)
 
     $<TARGET_OBJECTS:crypto_test_data>
   )
+  target_compile_options(${CRYPTO_TEST_EXEC} PUBLIC -std=c++14)
   target_link_libraries(${INTEGRATION_TEST_EXEC}
           boringssl_gtest_main ssl )
   target_include_directories(${INTEGRATION_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)

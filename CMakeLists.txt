@@ -877,7 +877,7 @@ if(BUILD_TESTING)
   endif()
   if(BUILD_SHARED_LIBS)
     # This is needed for the Windows build to correctly annotate GTest's API with __declspec(dllexport)
-    target_compile_options(boringssl_gtest PRIVATE -DGTEST_CREATE_SHARED_LIBRARY=1)
+    target_compile_options(boringssl_gtest PRIVATE -DGTEST_CREATE_SHARED_LIBRARY=1 -no-pedantic -std=c++14)
   endif()
   target_include_directories(
     boringssl_gtest
