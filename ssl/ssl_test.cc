@@ -6956,8 +6956,8 @@ TEST(SSLTest, CertCompression) {
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get()));
 
-  EXPECT_TRUE(SSL_get_app_data(client.get()) == XORDecompressFunc);
-  EXPECT_TRUE(SSL_get_app_data(server.get()) == XORCompressFunc);
+  EXPECT_EQ(SSL_get_app_data(client.get()), XORDecompressFunc);
+  EXPECT_EQ(SSL_get_app_data(server.get()), XORCompressFunc);
 }
 
 void MoveBIOs(SSL *dest, SSL *src) {
