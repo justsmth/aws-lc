@@ -77,7 +77,7 @@ extern "C" {
 // This is an implementation detail of |EVP_PKEY_HMAC|.
 #define EVP_MD_CTX_HMAC 0x0800
 
-typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
+
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
 
 struct evp_pkey_asn1_method_st {

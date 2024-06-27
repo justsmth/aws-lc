@@ -928,6 +928,60 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
 // to the secret key in |key|.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
+/********************
+
+  WORK IN PROGRESS
+
+vvvvvvvvvvvvvvvvvvvvv
+
+********************/
+
+
+// OpenSSL Docs: https://www.openssl.org/docs/man1.1.1/man3/EVP_PKEY_ASN1_METHOD.html
+
+
+
+
+// OpenSSL Docs: https://www.openssl.org/docs/man1.1.1/man3/EVP_PKEY_asn1_find_str.html
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **pe,
+                                                   const char *str, int len);
+int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
+                            int *ppkey_flags, const char **pinfo,
+                            const char **ppem_str,
+                            const EVP_PKEY_ASN1_METHOD *ameth);
+
+// OpenSSL Docs: https://www.openssl.org/docs/man1.1.1/man3/EVP_PKEY_CTX_ctrl_str.html
+int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                           const char *value);
+
+
+// OpenSSL Docs: https://www.openssl.org/docs/manmaster/man3/EVP_PKEY_CTX_get_app_data.html
+void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
+int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx);
+void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);
+
+// OpenSSL Docs: https://www.openssl.org/docs/manmaster/man3/EVP_PKEY_gen_cb.html
+typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
+void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb);
+
+// EVP_PKEY_get0 returns NULL. This function is provided for compatibility with
+// OpenSSL but does not return anything. Use the typed |EVP_PKEY_get0_*|
+// functions instead.
+//
+// Note: In OpenSSL, the returned type will be different depending on the type
+//       of |EVP_PKEY| consumed. This leads to misuage very easily and has been
+//       deprecated as a no-op to avoid so.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);
+
+/********************
+
+^^^^^^^^^^^^^^^^^^^^^
+
+  WORK IN PROGRESS
+
+********************/
+
+
 // Deprecated functions.
 
 // EVP_PKEY_RSA2 was historically an alternate form for RSA public keys (OID
