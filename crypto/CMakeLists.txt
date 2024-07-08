@@ -183,6 +183,26 @@ if(ARCH STREQUAL "aarch64")
     test/trampoline-armv8.${ASM_EXT}
     cipher_extra/chacha20_poly1305_armv8.${ASM_EXT}
   )
+  if(MSVC)
+    foreach(ASM_FILE ${CRYPTO_ARCH_SOURCES})
+      get_filename_component(ASM_NAME ${ASM_FILE} NAME_WE)
+      set(OBJ_FILE "${CMAKE_CURRENT_BINARY_DIR}/${ASM_NAME}.obj")
+      # message(FATAL_ERROR "${CMAKE_ASM_COMPILER} /I ${PROJECT_SOURCE_DIR}/include  ${CMAKE_CURRENT_BINARY_DIR}/${ASM_FILE}")
+      add_custom_command(
+        OUTPUT ${OBJ_FILE}
+        COMMAND "${CMAKE_ASM_COMPILER}" --target=arm64-pc-windows-msvc /c /I "${PROJECT_SOURCE_DIR}/include" "${ASM_FILE}"
+        DEPENDS ${ASM_FILE}
+        COMMENT "Assembling ${CMAKE_ASM_COMPILER} /I ${PROJECT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR}/${ASM_FILE}"
+      )
+      set_source_files_properties(${ASM_FILE} PROPERTIES OBJECT_OUTPUTS ${OBJ_FILE})
+      list(APPEND CRYPTO_ARCH_OBJ_FILES ${OBJ_FILE})
+    endforeach()
+    set(
+      CRYPTO_ARCH_SOURCES
+
+      ${CRYPTO_ARCH_OBJ_FILES}
+    )
+  endif()
 endif()
 
 if(ARCH STREQUAL "ppc64le")
