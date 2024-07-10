@@ -141,9 +141,7 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
       return false;
     }
   }
-  STACK_OF(SSL_CIPHER) *configured =
-      ssl->config->cipher_list ? ssl->config->cipher_list->ciphers.get()
-                               : ssl->ctx->cipher_list->ciphers.get();
+  STACK_OF(SSL_CIPHER) *configured = SSL_get_ciphers(ssl);
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> unsupported(sk_SSL_CIPHER_new_null());
   if (!unsupported) {
     return false;

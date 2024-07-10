@@ -2144,14 +2144,37 @@ int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh) { return 1; }
 int SSL_set_tmp_dh(SSL *ssl, const DH *dh) { return 1; }
 
 STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx) {
-  return ctx->cipher_list->ciphers.get();
+  if(ctx == NULL) {
+    return NULL;
+  }
+  // Be consistent with previous behavior when cipher_list populated
+  if(ctx->cipher_list && ctx->cipher_list->ciphers) {
+    return ctx->cipher_list->ciphers.get();
+  }
+  if(ctx->tls13_cipher_list && ctx->tls13_cipher_list->ciphers) {
+    return ctx->tls13_cipher_list->ciphers.get();
+  }
+  return NULL;
 }
 
 int SSL_CTX_cipher_in_group(const SSL_CTX *ctx, size_t i) {
-  if (i >= sk_SSL_CIPHER_num(ctx->cipher_list->ciphers.get())) {
+  if(ctx == NULL) {
     return 0;
   }
-  return ctx->cipher_list->in_group_flags[i];
+  // Be consistent with previous behavior when cipher_list populated
+  if (ctx->cipher_list && ctx->cipher_list->ciphers) {
+    if(i >= sk_SSL_CIPHER_num(ctx->cipher_list->ciphers.get())) {
+      return 0;
+    }
+    return ctx->cipher_list->in_group_flags[i];
+  }
+  if(ctx->tls13_cipher_list && ctx->tls13_cipher_list->ciphers) {
+    if(i >= sk_SSL_CIPHER_num(ctx->tls13_cipher_list->ciphers.get())) {
+      return 0;
+    }
+    return ctx->tls13_cipher_list->in_group_flags[i];
+  }
+  return 0;
 }
 
 STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
@@ -2164,7 +2187,7 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
   }
 
   return ssl->config->cipher_list ? ssl->config->cipher_list->ciphers.get()
-                                  : ssl->ctx->cipher_list->ciphers.get();
+                                  : SSL_CTX_get_ciphers(ssl->ctx.get());
 }
 
 const char *SSL_get_cipher_list(const SSL *ssl, int n) {
