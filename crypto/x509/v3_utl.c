@@ -57,6 +57,8 @@
  */
 /* X509 v3 extension utilities */
 
+#include <openssl/base.h>
+
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>

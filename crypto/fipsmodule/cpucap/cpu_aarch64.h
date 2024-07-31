@@ -8,6 +8,8 @@
 extern "C" {
 #endif
 
+#include <openssl/base.h>
+
 #include <inttypes.h>
 
 #include <stdio.h>

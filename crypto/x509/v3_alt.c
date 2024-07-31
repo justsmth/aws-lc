@@ -54,6 +54,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <openssl/base.h>
+
 #include <stdio.h>
 #include <string.h>
 

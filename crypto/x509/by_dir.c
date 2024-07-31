@@ -54,6 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <openssl/base.h>
+
 #include <inttypes.h>
 #include <string.h>
 #include <sys/stat.h>
