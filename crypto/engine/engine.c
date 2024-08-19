@@ -40,13 +40,12 @@ int ENGINE_free(ENGINE *engine) {
 }
 
 int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method) {
-  if(!engine) {
-    OPENSSL_PUT_ERROR(ENGINE, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
+  if(engine) {
+    engine->rsa_method = (RSA_METHOD *)method;
+    return 1;
   }
 
-  engine->rsa_method = (RSA_METHOD *)method;
-  return 1;
+  return 0;
 }
 
 const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine) {

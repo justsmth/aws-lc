@@ -54,7 +54,8 @@ OPENSSL_EXPORT int ENGINE_free(ENGINE *engine);
 // Set functions return one on success and zero for failure when
 // |engine| is NULL.
 
-OPENSSL_EXPORT int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method);
+OPENSSL_EXPORT int ENGINE_set_RSA(ENGINE *engine,
+                                         const RSA_METHOD *method);
 
 OPENSSL_EXPORT const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine);
 
