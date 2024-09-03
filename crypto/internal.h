@@ -140,14 +140,12 @@
 #endif
 #endif
 
-#if defined(OPENSSL_THREADS) && \
-    (!defined(OPENSSL_WINDOWS) || defined(__MINGW32__))
+#if defined(OPENSSL_THREADS) && !defined(__MSVCRT__)
 #include <pthread.h>
 #define OPENSSL_PTHREADS
 #endif
 
-#if defined(OPENSSL_THREADS) && !defined(OPENSSL_PTHREADS) && \
-    defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_THREADS) && !defined(OPENSSL_PTHREADS) && defined(__MSVCRT__)
 #define OPENSSL_WINDOWS_THREADS
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>

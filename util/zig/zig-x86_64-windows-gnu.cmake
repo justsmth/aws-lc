@@ -1,0 +1,9 @@
+set(CMAKE_ASM_COMPILER "${CMAKE_CURRENT_SOURCE_DIR}/util/zig/zig-cc.sh")
+set(CMAKE_C_COMPILER "${CMAKE_CURRENT_SOURCE_DIR}/util/zig/zig-cc.sh")
+set(CMAKE_CXX_COMPILER "${CMAKE_CURRENT_SOURCE_DIR}/util/zig/zig-c++.sh")
+
+set(CMAKE_SYSTEM_NAME "Windows")
+set(CMAKE_SYSTEM_PROCESSOR "x86_64")
+set(CMAKE_ASM_COMPILER_TARGET "x86_64-windows-gnu")
+set(CMAKE_C_COMPILER_TARGET "x86_64-windows-gnu")
+set(CMAKE_CXX_COMPILER_TARGET "x86_64-windows-gnu")

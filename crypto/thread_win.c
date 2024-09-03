@@ -148,6 +148,7 @@ static void NTAPI thread_local_destructor(PVOID module, DWORD reason,
 // Note, in the prefixed build, |p_thread_callback_boringssl| may be a macro.
 #define STRINGIFY(x) #x
 #define EXPAND_AND_STRINGIFY(x) STRINGIFY(x)
+#ifdef _MSC_VER
 #ifdef _WIN64
 __pragma(comment(linker, "/INCLUDE:_tls_used"))
 __pragma(comment(
@@ -157,6 +158,7 @@ __pragma(comment(linker, "/INCLUDE:__tls_used"))
 __pragma(comment(
     linker, "/INCLUDE:_" EXPAND_AND_STRINGIFY(p_thread_callback_boringssl)))
 #endif
+#endif  // _MSC_VER
 
 // .CRT$XLA to .CRT$XLZ is an array of PIMAGE_TLS_CALLBACK pointers that are
 // called automatically by the OS loader code (not the CRT) when the module is
@@ -174,6 +176,7 @@ __pragma(comment(
 // reference to this variable with a linker /INCLUDE:symbol pragma to ensure
 // that.) If this variable is discarded, the OnThreadExit function will never
 // be called.
+#ifdef _MSC_VER
 #ifdef _WIN64
 
 // .CRT section is merged with .rdata on x64 so it must be constant data.
@@ -193,6 +196,16 @@ PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
 #pragma data_seg()
 
 #endif  // _WIN64
+#elif defined(__GNUC__) || defined(__clang__)
+// GCC/Clang-specific code
+#ifdef _WIN64
+const PIMAGE_TLS_CALLBACK p_thread_callback_boringssl
+    __attribute__((section(".CRT$XLC"))) = thread_local_destructor;
+#else
+PIMAGE_TLS_CALLBACK p_thread_callback_boringssl
+    __attribute__((section(".CRT$XLC"))) = thread_local_destructor;
+#endif
+#endif  // _MSC_VER
 
 static void **get_thread_locals(void) {
   // |TlsGetValue| clears the last error even on success, so that callers may

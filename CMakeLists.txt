@@ -408,13 +408,6 @@ if(GCC OR CLANG)
     endif()
   endif()
 
-  if(MINGW)
-    # Some MinGW compilers set _WIN32_WINNT to an older version (Windows Server 2003)
-    # See: https://learn.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt?view=msvc-170
-    # Support Windows 7 and later.
-    add_definitions(-D_WIN32_WINNT=_WIN32_WINNT_WIN7)
-  endif()
-
   if(CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
   elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3")
