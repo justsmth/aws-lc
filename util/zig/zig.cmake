@@ -1,0 +1,3 @@
+set(CMAKE_ASM_COMPILER "${CMAKE_CURRENT_SOURCE_DIR}/util/zig/zig-cc.sh")
+set(CMAKE_C_COMPILER "${CMAKE_CURRENT_SOURCE_DIR}/util/zig/zig-cc.sh")
+set(CMAKE_CXX_COMPILER "${CMAKE_CURRENT_SOURCE_DIR}/util/zig/zig-c++.sh")

@@ -462,6 +462,27 @@ jobs:
         run: |
           docker run -v "${{ github.workspace }}:/awslc" "gcc-4.8"
 
+  zig:
+    needs: [sanity-test-run]
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-12
+          - macos-13-xlarge
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker Image
+        working-directory: .github/docker_images/gcc-4.8
+        run: |
+          docker build -t "gcc-4.8"  .
+      - name: Build using pre-generated assembly
+        run: |
+          docker run -v "${{ github.workspace }}:/awslc" "gcc-4.8"
+
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:
 #    needs: [sanity-test-run]
