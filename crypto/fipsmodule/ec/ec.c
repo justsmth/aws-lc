@@ -1097,6 +1097,10 @@ void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
   }
 }
 
+point_conversion_form_t EC_GROUP_get_point_conversion_form(const EC_GROUP * _grp) {
+    return POINT_CONVERSION_UNCOMPRESSED;
+}
+
 size_t EC_GROUP_set_seed(EC_GROUP *group, const unsigned char *seed,
                          size_t len) {
   return 0;

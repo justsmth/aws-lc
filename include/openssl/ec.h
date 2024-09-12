@@ -479,6 +479,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_GROUP_get_asn1_flag(
 // otherwise does nothing.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
     EC_GROUP *group, point_conversion_form_t form);
+OPENSSL_EXPORT OPENSSL_DEPRECATED point_conversion_form_t EC_GROUP_get_point_conversion_form(const EC_GROUP *);
 
 // EC_GROUP_set_seed does nothing and returns 0.
 //
