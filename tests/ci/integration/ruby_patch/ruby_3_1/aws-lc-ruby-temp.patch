@@ -1,50 +1,3 @@
-diff --git a/ext/openssl/lib/openssl/ssl.rb b/ext/openssl/lib/openssl/ssl.rb
-index a9103ec..7b9aa22 100644
---- a/ext/openssl/lib/openssl/ssl.rb
-+++ b/ext/openssl/lib/openssl/ssl.rb
-@@ -30,24 +30,24 @@ class SSLContext
-         }.call
-       }
- 
--      if defined?(OpenSSL::PKey::DH)
--        DEFAULT_2048 = OpenSSL::PKey::DH.new <<-_end_of_pem_
-------BEGIN DH PARAMETERS-----
--MIIBCAKCAQEA7E6kBrYiyvmKAMzQ7i8WvwVk9Y/+f8S7sCTN712KkK3cqd1jhJDY
--JbrYeNV3kUIKhPxWHhObHKpD1R84UpL+s2b55+iMd6GmL7OYmNIT/FccKhTcveab
--VBmZT86BZKYyf45hUF9FOuUM9xPzuK3Vd8oJQvfYMCd7LPC0taAEljQLR4Edf8E6
--YoaOffgTf5qxiwkjnlVZQc3whgnEt9FpVMvQ9eknyeGB5KHfayAc3+hUAvI3/Cr3
--1bNveX5wInh5GDx1FGhKBZ+s1H+aedudCm7sCgRwv8lKWYGiHzObSma8A86KG+MD
--7Lo5JquQ3DlBodj3IDyPrxIv96lvRPFtAwIBAg==
-------END DH PARAMETERS-----
--        _end_of_pem_
--        private_constant :DEFAULT_2048
--
--        DEFAULT_TMP_DH_CALLBACK = lambda { |ctx, is_export, keylen| # :nodoc:
--          warn "using default DH parameters." if $VERBOSE
--          DEFAULT_2048
--        }
--      end
-+#       if defined?(OpenSSL::PKey::DH)
-+#         DEFAULT_2048 = OpenSSL::PKey::DH.new <<-_end_of_pem_
-+# -----BEGIN DH PARAMETERS-----
-+# MIIBCAKCAQEA7E6kBrYiyvmKAMzQ7i8WvwVk9Y/+f8S7sCTN712KkK3cqd1jhJDY
-+# JbrYeNV3kUIKhPxWHhObHKpD1R84UpL+s2b55+iMd6GmL7OYmNIT/FccKhTcveab
-+# VBmZT86BZKYyf45hUF9FOuUM9xPzuK3Vd8oJQvfYMCd7LPC0taAEljQLR4Edf8E6
-+# YoaOffgTf5qxiwkjnlVZQc3whgnEt9FpVMvQ9eknyeGB5KHfayAc3+hUAvI3/Cr3
-+# 1bNveX5wInh5GDx1FGhKBZ+s1H+aedudCm7sCgRwv8lKWYGiHzObSma8A86KG+MD
-+# 7Lo5JquQ3DlBodj3IDyPrxIv96lvRPFtAwIBAg==
-+# -----END DH PARAMETERS-----
-+#         _end_of_pem_
-+#         private_constant :DEFAULT_2048
-+
-+#         DEFAULT_TMP_DH_CALLBACK = lambda { |ctx, is_export, keylen| # :nodoc:
-+#           warn "using default DH parameters." if $VERBOSE
-+#           DEFAULT_2048
-+#         }
-+#       end
- 
-       if !(OpenSSL::OPENSSL_VERSION.start_with?("OpenSSL") &&
-            OpenSSL::OPENSSL_VERSION_NUMBER >= 0x10100000)
 diff --git a/ext/openssl/ossl_config.c b/ext/openssl/ossl_config.c
 index 0bac027..7d499a0 100644
 --- a/ext/openssl/ossl_config.c
@@ -180,19 +133,6 @@ diff --git a/ext/openssl/ossl_pkey.c b/ext/openssl/ossl_pkey.c
 index 4aa4489..be5769c 100644
 --- a/ext/openssl/ossl_pkey.c
 +++ b/ext/openssl/ossl_pkey.c
-@@ -178,9 +178,9 @@ ossl_pkey_read_generic(BIO *bio, VALUE pass)
-     OSSL_BIO_reset(bio);
-     if ((pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL)))
- 	goto out;
--    OSSL_BIO_reset(bio);
--    if ((pkey = PEM_read_bio_Parameters(bio, NULL)))
--	goto out;
-+    // OSSL_BIO_reset(bio);
-+    // if ((pkey = PEM_read_bio_Parameters(bio, NULL)))
-+	// goto out;
- 
-   out:
-     return pkey;
 @@ -710,23 +710,23 @@ ossl_pkey_export_traditional(int argc, VALUE *argv, VALUE self, int to_der)
  	}
      }
