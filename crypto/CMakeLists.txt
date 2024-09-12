@@ -426,7 +426,6 @@ add_library(
   evp_extra/p_ec_asn1.c
   evp_extra/p_ed25519_asn1.c
   evp_extra/p_hmac_asn1.c
-  evp_extra/p_kem.c
   evp_extra/p_kem_asn1.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
@@ -438,8 +437,6 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
-  kem/kem.c
-  kem/kem_methods.c
   kyber/kyber512r3_ref.c
   kyber/kyber768r3_ref.c
   kyber/kyber1024r3_ref.c

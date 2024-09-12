@@ -2525,3 +2525,38 @@ TEST(ECTest, ECKEYMETHOD) {
   EC_KEY_METHOD_set_flags(ec_method, ECDSA_FLAG_OPAQUE);
   ASSERT_TRUE(EC_KEY_is_opaque(ec));
 }
+
+TEST(ECTest, ECEngine) {
+  ENGINE *engine = ENGINE_new();
+  ASSERT_TRUE(engine);
+  ASSERT_FALSE(ENGINE_get_EC(engine));
+
+  EC_KEY_METHOD *eng_funcs = EC_KEY_METHOD_new(NULL);
+  ASSERT_TRUE(eng_funcs);
+  EC_KEY_METHOD_set_sign(eng_funcs, NULL, NULL, ecdsa_sign_sig);
+
+  ASSERT_TRUE(ENGINE_set_EC(engine, eng_funcs));
+  ASSERT_TRUE(ENGINE_get_EC(engine));
+
+  EC_KEY *key = EC_KEY_new_method(engine);
+  ASSERT_TRUE(key);
+
+  // Call custom Engine implementation
+  ECDSA_do_sign(NULL, 0, key);
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(key, 1))
+  , "ecdsa_sign_sig");
+
+  EC_KEY_free(key);
+  ENGINE_free(engine);
+  EC_KEY_METHOD_free(eng_funcs);
+}
+
+TEST(ECTest, ECPKParmatersBio) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_p256()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_p256());
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_secp256k1()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_secp256k1());
+}

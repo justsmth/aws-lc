@@ -74,19 +74,13 @@ DEFINE_LOCAL_DATA(struct fips_evp_pkey_methods, AWSLC_fips_evp_pkey_methods) {
   out->methods[3] = EVP_PKEY_hkdf_pkey_meth();
   out->methods[4] = EVP_PKEY_hmac_pkey_meth();
   out->methods[5] = EVP_PKEY_ed25519_pkey_meth();
+  out->methods[6] = EVP_PKEY_kem_pkey_meth();
 }
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
 
-  // First try the fips public key methods. At a later stage, we might want to
-  // reorder these such that we go through the list with the most used public
-  // key method first.
-  // Currently, ED25519 and x25519 in the non-fips list are likely not more popular
-  // than RSA and ECC in the fips list. They may make their way in the fips list when
-  // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186-draft.pdf
-  // and
-  // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5-draft.pdf
-  // are finalised.
+  // First we search through the FIPS public key methods. We assume these are
+  // the most popular.
   const struct fips_evp_pkey_methods *const fips_methods = AWSLC_fips_evp_pkey_methods();
   for (size_t i = 0; i < FIPS_EVP_PKEY_METHODS; i++) {
     if (fips_methods->methods[i]->pkey_id == type) {
@@ -597,30 +591,56 @@ int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
                                                seed, seed_len);
 }
 
-int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,
-                         uint8_t *ciphertext, size_t *ciphertext_len,
-                         uint8_t *shared_secret, size_t *shared_secret_len) {
+int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx, uint8_t *ciphertext,
+                         size_t *ciphertext_len, uint8_t *shared_secret,
+                         size_t *shared_secret_len) {
+  // We have to avoid potential underlying services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SET_DIT_AUTO_DISABLE;
+  int ret = 0;
   if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encapsulate == NULL) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-      return 0;
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto end;
   }
 
-  return ctx->pmeth->encapsulate(ctx, ciphertext, ciphertext_len,
-                                 shared_secret, shared_secret_len);
+  if (!ctx->pmeth->encapsulate(ctx, ciphertext, ciphertext_len, shared_secret,
+                               shared_secret_len)) {
+    goto end;
+  }
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  if (ret && ciphertext != NULL && shared_secret != NULL) {
+    EVP_PKEY_encapsulate_verify_service_indicator(ctx);
+  }
+  return ret;
 }
 
-int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx,
-                         uint8_t *shared_secret, size_t *shared_secret_len,
-                         const uint8_t *ciphertext, size_t ciphertext_len) {
+int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx, uint8_t *shared_secret,
+                         size_t *shared_secret_len, const uint8_t *ciphertext,
+                         size_t ciphertext_len) {
+  // We have to avoid potential underlying services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SET_DIT_AUTO_DISABLE;
+  int ret = 0;
   if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->decapsulate == NULL) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-      return 0;
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto end;
   }
 
-  return ctx->pmeth->decapsulate(ctx, shared_secret, shared_secret_len,
-                                 ciphertext, ciphertext_len);
+  if (!ctx->pmeth->decapsulate(ctx, shared_secret, shared_secret_len,
+                               ciphertext, ciphertext_len)) {
+    goto end;
+  }
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  if (ret && shared_secret != NULL) {
+    EVP_PKEY_decapsulate_verify_service_indicator(ctx);
+  }
+  return ret;
 }
 
 // Deprecated keygen NO-OP functions

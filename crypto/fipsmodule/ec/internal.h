@@ -763,14 +763,16 @@ struct ec_key_method_st {
     // AWS-LC doesn't support custom values for EC_KEY operations
     // as of now. |k_inv| and |r| must be NULL parameters.
     // The |type| parameter is ignored in OpenSSL, we pass in zero for it.
-    // |sign| is invoked in |ECDSA_sign|.
+    // The default behavior for |sign| is implemented in |ECDSA_sign|. If custom
+    // functionality is provided, |sign| will be invoked within |ECDSA_sign|.
     int (*sign)(int type, const uint8_t *digest, int digest_len,
                 uint8_t *sig, unsigned int *siglen, const BIGNUM *k_inv,
                 const BIGNUM *r, EC_KEY *eckey);
 
     // AWS-LC doesn't support custom values for EC_KEY operations
-    // as of now. |k_inv| and |r| must be NULL parameters. |sign_sig| is
-    // invoked in |ECDSA_do_sign|.
+    // as of now. |k_inv| and |r| must be NULL parameters. The default behavior
+    // for |sign_sig| is implemented in |ECDSA_do_sign|. If custom functionality
+    // is provided, |sign_sig| will be invoked within |ECDSA_do_sign|.
     ECDSA_SIG *(*sign_sig)(const uint8_t *digest, int digest_len,
                            const BIGNUM *in_kinv, const BIGNUM *in_r,
                            EC_KEY *eckey);
@@ -821,7 +823,10 @@ struct ec_key_st {
 
 // d2i_ECPKParameters deserializes the |ECPKParameters| specified in RFC 3279
 // to an |EC_GROUP| from |inp|. Only deserialization of namedCurves or
-// explicitly-encoded versions of namedCurves are supported.
+// explicitly-encoded versions of namedCurves are supported. If |*out_group| is
+// non-null, the original |*out_group| is freed and the returned |EC_GROUP| is
+// also written to |*out_group|. The user continues to maintain the memory
+// assigned to |*out_group| if non-null.
 EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group, const uint8_t **inp,
                              long len);
 

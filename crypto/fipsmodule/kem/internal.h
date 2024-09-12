@@ -34,29 +34,20 @@ typedef struct {
                 const uint8_t *secret_key);
 } KEM_METHOD;
 
-extern const KEM_METHOD kem_kyber512r3_method;
-extern const KEM_METHOD kem_kyber768r3_method;
-extern const KEM_METHOD kem_kyber1024r3_method;
-extern const KEM_METHOD kem_ml_kem_512_method;
-extern const KEM_METHOD kem_ml_kem_768_method;
-extern const KEM_METHOD kem_ml_kem_1024_method;
-
 // KEM structure and helper functions.
 typedef struct {
-  const int nid;
+  int nid;
   const uint8_t *oid;
-  const uint8_t oid_len;
+  uint8_t oid_len;
   const char *comment;
-  const size_t public_key_len;
-  const size_t secret_key_len;
-  const size_t ciphertext_len;
-  const size_t shared_secret_len;
-  const size_t keygen_seed_len;
-  const size_t encaps_seed_len;
+  size_t public_key_len;
+  size_t secret_key_len;
+  size_t ciphertext_len;
+  size_t shared_secret_len;
+  size_t keygen_seed_len;
+  size_t encaps_seed_len;
   const KEM_METHOD *method;
 } KEM;
-
-const KEM *KEM_find_kem_by_nid(int nid);
 
 // KEM_KEY structure and helper functions.
 struct kem_key_st {
@@ -64,6 +55,8 @@ struct kem_key_st {
   uint8_t *public_key;
   uint8_t *secret_key;
 };
+
+const KEM *KEM_find_kem_by_nid(int nid);
 
 KEM_KEY *KEM_KEY_new(void);
 int KEM_KEY_init(KEM_KEY *key, const KEM *kem);
@@ -98,4 +91,4 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
 }  // extern C
 #endif
 
-#endif
+#endif // AWSLC_HEADER_KEM_TEST_INTERNAL_H
