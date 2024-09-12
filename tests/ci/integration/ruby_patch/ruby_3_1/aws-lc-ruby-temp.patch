@@ -1,3 +1,21 @@
+From 787d0f02ff4d1297c95649f9074146dee7bece5b Mon Sep 17 00:00:00 2001
+From: Justin Smith <justsmth@amazon.com>
+Date: Thu, 12 Sep 2024 14:30:50 -0400
+Subject: [PATCH] Patch for aws-lc
+
+---
+ ext/openssl/lib/openssl/ssl.rb | 34 +++++++++++++++---------------
+ ext/openssl/ossl_config.c      |  8 +++++++
+ ext/openssl/ossl_config.h      |  3 +++
+ ext/openssl/ossl_ocsp.c        | 16 ++++++++------
+ ext/openssl/ossl_pkcs7.c       |  8 +++++++
+ ext/openssl/ossl_pkcs7.h       |  2 ++
+ ext/openssl/ossl_pkey.c        | 38 +++++++++++++++++-----------------
+ ext/openssl/ossl_pkey_ec.c     |  4 ++--
+ ext/openssl/ossl_x509.c        |  4 ++--
+ ext/openssl/ossl_x509ext.c     |  2 +-
+ 10 files changed, 72 insertions(+), 47 deletions(-)
+
 diff --git a/ext/openssl/lib/openssl/ssl.rb b/ext/openssl/lib/openssl/ssl.rb
 index a9103ec..7b9aa22 100644
 --- a/ext/openssl/lib/openssl/ssl.rb
@@ -18,12 +36,6 @@ index a9103ec..7b9aa22 100644
 ------END DH PARAMETERS-----
 -        _end_of_pem_
 -        private_constant :DEFAULT_2048
--
--        DEFAULT_TMP_DH_CALLBACK = lambda { |ctx, is_export, keylen| # :nodoc:
--          warn "using default DH parameters." if $VERBOSE
--          DEFAULT_2048
--        }
--      end
 +#       if defined?(OpenSSL::PKey::DH)
 +#         DEFAULT_2048 = OpenSSL::PKey::DH.new <<-_end_of_pem_
 +# -----BEGIN DH PARAMETERS-----
@@ -36,7 +48,12 @@ index a9103ec..7b9aa22 100644
 +# -----END DH PARAMETERS-----
 +#         _end_of_pem_
 +#         private_constant :DEFAULT_2048
-+
+ 
+-        DEFAULT_TMP_DH_CALLBACK = lambda { |ctx, is_export, keylen| # :nodoc:
+-          warn "using default DH parameters." if $VERBOSE
+-          DEFAULT_2048
+-        }
+-      end
 +#         DEFAULT_TMP_DH_CALLBACK = lambda { |ctx, is_export, keylen| # :nodoc:
 +#           warn "using default DH parameters." if $VERBOSE
 +#           DEFAULT_2048
@@ -204,7 +221,14 @@ index 4aa4489..be5769c 100644
 -#else
 -	char pem_str[80];
 -	const char *aname;
--
++// #if OPENSSL_VERSION_NUMBER >= 0x10100000
++// 	if (!PEM_write_bio_PrivateKey_traditional(bio, pkey, enc, NULL, 0,
++// 						  ossl_pem_passwd_cb,
++// 						  (void *)pass)) {
++// #else
++// 	char pem_str[80];
++// 	const char *aname;
+ 
 -	EVP_PKEY_asn1_get0_info(NULL, NULL, NULL, NULL, &aname, pkey->ameth);
 -	snprintf(pem_str, sizeof(pem_str), "%s PRIVATE KEY", aname);
 -	if (!PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey, pem_str, bio,
@@ -214,14 +238,6 @@ index 4aa4489..be5769c 100644
 -	    BIO_free(bio);
 -	    ossl_raise(ePKeyError, "PEM_write_bio_PrivateKey_traditional");
 -	}
-+// #if OPENSSL_VERSION_NUMBER >= 0x10100000
-+// 	if (!PEM_write_bio_PrivateKey_traditional(bio, pkey, enc, NULL, 0,
-+// 						  ossl_pem_passwd_cb,
-+// 						  (void *)pass)) {
-+// #else
-+// 	char pem_str[80];
-+// 	const char *aname;
-+
 +// 	EVP_PKEY_asn1_get0_info(NULL, NULL, NULL, NULL, &aname, pkey->ameth);
 +// 	snprintf(pem_str, sizeof(pem_str), "%s PRIVATE KEY", aname);
 +// 	if (!PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey, pem_str, bio,
@@ -271,3 +287,19 @@ index f847070..53b6270 100644
      DefX509Const(TRUST_TSA);
  
      DefX509Default(CERT_AREA, cert_area);
+diff --git a/ext/openssl/ossl_x509ext.c b/ext/openssl/ossl_x509ext.c
+index e54102c..b6658e7 100644
+--- a/ext/openssl/ossl_x509ext.c
++++ b/ext/openssl/ossl_x509ext.c
+@@ -226,7 +226,7 @@ ossl_x509extfactory_create_ext(int argc, VALUE *argv, VALUE self)
+     GetX509ExtFactory(self, ctx);
+     obj = NewX509Ext(cX509Ext);
+     rconf = rb_iv_get(self, "@config");
+-    conf = NIL_P(rconf) ? NULL : GetConfig(rconf);
++    conf = NULL;
+     X509V3_set_nconf(ctx, conf);
+     ext = X509V3_EXT_nconf_nid(conf, ctx, nid, RSTRING_PTR(valstr));
+     X509V3_set_ctx_nodb(ctx);
+-- 
+2.39.3 (Apple Git-145)
+
