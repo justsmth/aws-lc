@@ -78,4 +78,6 @@ for branch in "$@"; do
     ruby_build ${branch}
 done
 
+cp ${AWS_LC_INSTALL_FOLDER}/lib/{libcrypto.*,libssl.*} ${RUBY_SRC_FOLDER}/${branch}/build
+
 popd
