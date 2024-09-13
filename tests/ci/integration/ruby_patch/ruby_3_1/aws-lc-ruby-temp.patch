@@ -1,19 +1,19 @@
-From 74a05634822493182094618aa502be8bca00fbda Mon Sep 17 00:00:00 2001
+From 5a7c5f89085bf58e46c48a2531464a3a2b97c0b4 Mon Sep 17 00:00:00 2001
 From: Justin Smith <justsmth@amazon.com>
-Date: Fri, 13 Sep 2024 07:59:49 -0400
-Subject: [PATCH] Patch out GetConfig
+Date: Fri, 13 Sep 2024 11:52:19 -0400
+Subject: [PATCH] Patch for AWS-LC
 
 ---
- ext/openssl/ossl_config.c  |  8 ++++++++
+ ext/openssl/ossl_config.c  |  8 ++++++
  ext/openssl/ossl_config.h  |  3 +++
- ext/openssl/ossl_ocsp.c    | 16 ++++++++++------
- ext/openssl/ossl_pkcs7.c   |  8 ++++++++
+ ext/openssl/ossl_ocsp.c    | 16 +++++++-----
+ ext/openssl/ossl_pkcs7.c   |  8 ++++++
  ext/openssl/ossl_pkcs7.h   |  2 ++
- ext/openssl/ossl_pkey.c    | 32 ++++++++++++++++----------------
- ext/openssl/ossl_pkey_ec.c |  4 ++--
- ext/openssl/ossl_x509.c    |  4 ++--
+ ext/openssl/ossl_pkey.c    | 50 ++++++++++++++++++--------------------
+ ext/openssl/ossl_pkey_ec.c |  4 +--
+ ext/openssl/ossl_x509.c    |  4 +--
  ext/openssl/ossl_x509ext.c |  2 +-
- 9 files changed, 52 insertions(+), 27 deletions(-)
+ 9 files changed, 59 insertions(+), 38 deletions(-)
 
 diff --git a/ext/openssl/ossl_config.c b/ext/openssl/ossl_config.c
 index 0bac027..7d499a0 100644
@@ -147,13 +147,49 @@ index 3e1b094..f85efcc 100644
  void Init_ossl_pkcs7(void);
  
 diff --git a/ext/openssl/ossl_pkey.c b/ext/openssl/ossl_pkey.c
-index 4aa4489..c7790aa 100644
+index 4aa4489..e6e2129 100644
 --- a/ext/openssl/ossl_pkey.c
 +++ b/ext/openssl/ossl_pkey.c
-@@ -710,23 +710,23 @@ ossl_pkey_export_traditional(int argc, VALUE *argv, VALUE self, int to_der)
- 	}
+@@ -7,6 +7,8 @@
+  * This program is licensed under the same licence as Ruby.
+  * (See the file 'LICENCE'.)
+  */
++#include "openssl/base.h"
++#include "openssl/evp.h"
+ #include "ossl.h"
+ 
+ #ifdef OSSL_USE_ENGINE
+@@ -686,8 +688,7 @@ ossl_pkey_to_text(VALUE self)
+ }
+ 
+ VALUE
+-ossl_pkey_export_traditional(int argc, VALUE *argv, VALUE self, int to_der)
+-{
++ossl_pkey_export_traditional(int argc, VALUE *argv, VALUE self, int to_der) {
+     EVP_PKEY *pkey;
+     VALUE cipher, pass;
+     const EVP_CIPHER *enc = NULL;
+@@ -696,37 +697,32 @@ ossl_pkey_export_traditional(int argc, VALUE *argv, VALUE self, int to_der)
+     GetPKey(self, pkey);
+     rb_scan_args(argc, argv, "02", &cipher, &pass);
+     if (!NIL_P(cipher)) {
+-	enc = ossl_evp_get_cipherbyname(cipher);
+-	pass = ossl_pem_passwd_value(pass);
++        enc = ossl_evp_get_cipherbyname(cipher);
++        pass = ossl_pem_passwd_value(pass);
      }
-     else {
+ 
+     bio = BIO_new(BIO_s_mem());
+     if (!bio)
+-	ossl_raise(ePKeyError, "BIO_new");
++        ossl_raise(ePKeyError, "BIO_new");
+     if (to_der) {
+-	if (!i2d_PrivateKey_bio(bio, pkey)) {
+-	    BIO_free(bio);
+-	    ossl_raise(ePKeyError, "i2d_PrivateKey_bio");
+-	}
+-    }
+-    else {
 -#if OPENSSL_VERSION_NUMBER >= 0x10100000
 -	if (!PEM_write_bio_PrivateKey_traditional(bio, pkey, enc, NULL, 0,
 -						  ossl_pem_passwd_cb,
@@ -161,13 +197,15 @@ index 4aa4489..c7790aa 100644
 -#else
 -	char pem_str[80];
 -	const char *aname;
-+// #if OPENSSL_VERSION_NUMBER >= 0x10100000
-+// 	if (!PEM_write_bio_PrivateKey_traditional(bio, pkey, enc, NULL, 0,
-+// 						  ossl_pem_passwd_cb,
-+// 						  (void *)pass)) {
-+// #else
-+// 	char pem_str[80];
-+// 	const char *aname;
++        if (!i2d_PrivateKey_bio(bio, pkey)) {
++            BIO_free(bio);
++            ossl_raise(ePKeyError, "i2d_PrivateKey_bio");
++        }
++    } else {
++        char pem_str[80];
++        const char *aname;
++        const int pkey_type = EVP_PKEY_id(pkey);
++        const EVP_PKEY_ASN1_METHOD* asn1_methods = EVP_PKEY_asn1_find(NULL, pkey_type);
  
 -	EVP_PKEY_asn1_get0_info(NULL, NULL, NULL, NULL, &aname, pkey->ameth);
 -	snprintf(pem_str, sizeof(pem_str), "%s PRIVATE KEY", aname);
@@ -178,15 +216,14 @@ index 4aa4489..c7790aa 100644
 -	    BIO_free(bio);
 -	    ossl_raise(ePKeyError, "PEM_write_bio_PrivateKey_traditional");
 -	}
-+// 	EVP_PKEY_asn1_get0_info(NULL, NULL, NULL, NULL, &aname, pkey->ameth);
-+// 	snprintf(pem_str, sizeof(pem_str), "%s PRIVATE KEY", aname);
-+// 	if (!PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey, pem_str, bio,
-+// 				pkey, enc, NULL, 0, ossl_pem_passwd_cb,
-+// 				(void *)pass)) {
-+// #endif
-+	//     BIO_free(bio);
-+	//     ossl_raise(ePKeyError, "PEM_write_bio_PrivateKey_traditional");
-+	// }
++        EVP_PKEY_asn1_get0_info(NULL, NULL, NULL, NULL, &aname, asn1_methods);
++        snprintf(pem_str, sizeof(pem_str), "%s PRIVATE KEY", aname);
++        if (!PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey, pem_str, bio,
++                                pkey, enc, NULL, 0, ossl_pem_passwd_cb,
++                                (void *)pass)) {
++            BIO_free(bio);
++            ossl_raise(ePKeyError, "PEM_write_bio_PrivateKey_traditional");
++        }
      }
      return ossl_membio2str(bio);
  }
