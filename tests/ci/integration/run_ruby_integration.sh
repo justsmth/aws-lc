@@ -30,7 +30,6 @@ function ruby_build() {
     pushd ${branch}
     ./autogen.sh
     mkdir -p build && cd build
-    export
     ../configure CFLAGS="-DAWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS=1 -Wno-deprecated-declarations" \
                  --with-openssl-dir=${AWS_LC_INSTALL_FOLDER} \
                  --with-openssl-lib=${AWS_LC_INSTALL_FOLDER}/lib \
