@@ -25,7 +25,7 @@ X509* CreateAndSignX509Certificate() {
   }
   bssl::UniquePtr<RSA> rsa(RSA_new());
   bssl::UniquePtr<BIGNUM> bn(BN_new());
-  if (!bn || !BN_set_word(bn.get(), RSA_F4) ||
+  if (!rsa || !bn || !BN_set_word(bn.get(), RSA_F4) ||
       !RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr) ||
       !EVP_PKEY_assign_RSA(pkey.get(), rsa.release())) {
     return nullptr;
@@ -54,7 +54,9 @@ protected:
     bssl::UniquePtr<RSA> rsa(RSA_new());
     ASSERT_TRUE(rsa);
     bssl::UniquePtr<BIGNUM> bn(BN_new());
-    ASSERT_TRUE(bn && rsa && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
+    ASSERT_TRUE(bn);
+    ASSERT_TRUE(BN_set_word(bn.get(), RSA_F4));
+    ASSERT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
     ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
 
     ScopedFILE signkey_file(fopen(signkey_path, "wb"));
@@ -70,8 +72,8 @@ protected:
 
     bssl::UniquePtr<X509_REQ> csr(X509_REQ_new());
     ASSERT_TRUE(csr);
-    X509_REQ_set_pubkey(csr.get(), pkey.get());
-    X509_REQ_sign(csr.get(), pkey.get(), EVP_sha256());
+    ASSERT_TRUE(X509_REQ_set_pubkey(csr.get(), pkey.get()));
+    ASSERT_GT(X509_REQ_sign(csr.get(), pkey.get(), EVP_sha256()), 0);
 
     ScopedFILE csr_file(fopen(csr_path, "wb"));
     ASSERT_TRUE(csr_file);
