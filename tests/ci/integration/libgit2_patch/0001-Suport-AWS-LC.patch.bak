@@ -1,0 +1,48 @@
+From 8ec5783b9cd491133f435efeb45c761f85102291 Mon Sep 17 00:00:00 2001
+From: Justin Smith <justsmth@amazon.com>
+Date: Mon, 24 Feb 2025 17:10:06 -0500
+Subject: [PATCH] Suport AWS-LC
+
+---
+ deps/ntlmclient/crypt_openssl.c | 2 +-
+ deps/ntlmclient/crypt_openssl.h | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/deps/ntlmclient/crypt_openssl.c b/deps/ntlmclient/crypt_openssl.c
+index 3bec27259..fc6f09dfd 100644
+--- a/deps/ntlmclient/crypt_openssl.c
++++ b/deps/ntlmclient/crypt_openssl.c
+@@ -46,7 +46,7 @@ NTLM_INLINE(void) HMAC_CTX_free(HMAC_CTX *ctx)
+ 
+ #if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)) || \
+ 	(defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x03050000fL) || \
+-	defined(CRYPT_OPENSSL_DYNAMIC)
++	defined(CRYPT_OPENSSL_DYNAMIC) || defined(OPENSSL_IS_AWSLC)
+ 
+ NTLM_INLINE(void) HMAC_CTX_cleanup(HMAC_CTX *ctx)
+ {
+diff --git a/deps/ntlmclient/crypt_openssl.h b/deps/ntlmclient/crypt_openssl.h
+index 8654027db..f0421724e 100644
+--- a/deps/ntlmclient/crypt_openssl.h
++++ b/deps/ntlmclient/crypt_openssl.h
+@@ -9,7 +9,7 @@
+ #ifndef PRIVATE_CRYPT_OPENSSL_H__
+ #define PRIVATE_CRYPT_OPENSSL_H__
+ 
+-#ifndef CRYPT_OPENSSL_DYNAMIC
++#if !defined(CRYPT_OPENSSL_DYNAMIC) && !defined(OPENSSL_IS_AWSLC)
+ # include <openssl/des.h>
+ # include <openssl/hmac.h>
+ #endif
+@@ -19,7 +19,7 @@
+ # define HMAC_CTX struct hmac_ctx_st
+ #endif
+ 
+-#ifdef CRYPT_OPENSSL_DYNAMIC
++#if defined(CRYPT_OPENSSL_DYNAMIC) || defined(OPENSSL_IS_AWSLC)
+ typedef unsigned char DES_cblock[8];
+ typedef unsigned char const_DES_cblock[8];
+ 
+-- 
+2.39.5 (Apple Git-154)
+
