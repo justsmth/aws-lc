@@ -692,9 +692,12 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 // BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT is unsupported as it is unused by consumers
 // and depends on |timeval|, which is not 2038-clean on all platforms.
 
+#define BIO_CTRL_DGRAM_SET_PEER           44/* Destination for the data */
 #define BIO_CTRL_DGRAM_GET_PEER           46
 
 #define BIO_CTRL_DGRAM_GET_FALLBACK_MTU   47
+
+OPENSSL_EXPORT const BIO_METHOD *BIO_s_datagram(void);
 
 
 // BIO Pairs.
