@@ -3190,6 +3190,7 @@ struct DTLS1_STATE {
 
   uint16_t handshake_write_seq = 0;
   uint16_t handshake_read_seq = 0;
+  uint16_t next_handshake_write_seq = 0;
 
   // save last sequence number for retransmissions
   uint8_t last_write_sequence[8] = {0};
