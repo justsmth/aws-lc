@@ -608,7 +608,8 @@ function(build_libcrypto)
   if(WIN32)
     target_link_libraries(${arg_NAME} PUBLIC ws2_32)
   endif()
-  if(NOT WIN32 AND NOT ANDROID)
+  # Generic systems (e.g., WASI) do not support pthreads
+  if(NOT WIN32 AND NOT ANDROID AND NOT CMAKE_SYSTEM_NAME STREQUAL "Generic")
     target_link_libraries(${arg_NAME} PUBLIC pthread)
   endif()
 
@@ -758,6 +759,18 @@ if(BUILD_TESTING)
 
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
+  # Socket tests require socket support, exclude on platforms without it (e.g., WASI)
+  set(CRYPTO_SOCKET_TEST_SOURCES "")
+  if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "wasm32")
+    set(CRYPTO_SOCKET_TEST_SOURCES bio/bio_socket_test.cc)
+  endif()
+
+  # Console tests require dup/dup2 for I/O redirection, exclude on WASI
+  set(CRYPTO_CONSOLE_TEST_SOURCES "")
+  if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "wasm32")
+    set(CRYPTO_CONSOLE_TEST_SOURCES console/console_test.cc)
+  endif()
+
   add_executable(
     ${CRYPTO_TEST_EXEC}
 
@@ -766,7 +779,7 @@ if(BUILD_TESTING)
     base64/base64_test.cc
     bio/bio_md_test.cc
     bio/bio_test.cc
-    bio/bio_socket_test.cc
+    ${CRYPTO_SOCKET_TEST_SOURCES}
     blake2/blake2_test.cc
     buf/buf_test.cc
     bytestring/bytestring_test.cc
@@ -775,7 +788,7 @@ if(BUILD_TESTING)
     cipher_extra/cipher_test.cc
     compiler_test.cc
     conf/conf_test.cc
-    console/console_test.cc
+    ${CRYPTO_CONSOLE_TEST_SOURCES}
     constant_time_test.cc
     crypto_test.cc
     ecdh_extra/ecdh_test.cc
@@ -902,19 +915,23 @@ if(BUILD_TESTING)
 
   add_dependencies(all_tests ${DYNAMIC_LOADING_TEST_EXEC})
 
-  message(STATUS "Generating test executable ${RWLOCK_STATIC_INIT_TEST_EXEC}.")
-  add_executable(${RWLOCK_STATIC_INIT_TEST_EXEC} rwlock_static_init.cc)
-  add_dependencies(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
-  set_test_location(${RWLOCK_STATIC_INIT_TEST_EXEC})
+  # rwlock_static_init requires threading support (std::thread)
+  # Skip on Generic (WASI) and Android which don't have pthreads
+  if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android)$")
+    message(STATUS "Generating test executable ${RWLOCK_STATIC_INIT_TEST_EXEC}.")
+    add_executable(${RWLOCK_STATIC_INIT_TEST_EXEC} rwlock_static_init.cc)
+    add_dependencies(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+    set_test_location(${RWLOCK_STATIC_INIT_TEST_EXEC})
 
-  target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
-  target_add_awslc_include_paths(TARGET ${RWLOCK_STATIC_INIT_TEST_EXEC} SCOPE PRIVATE)
-  if(MSVC)
-    target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} ws2_32)
-  else()
-    target_compile_options(${RWLOCK_STATIC_INIT_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
+    target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+    target_add_awslc_include_paths(TARGET ${RWLOCK_STATIC_INIT_TEST_EXEC} SCOPE PRIVATE)
+    if(MSVC)
+      target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} ws2_32)
+    else()
+      target_compile_options(${RWLOCK_STATIC_INIT_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
+    endif()
+    add_dependencies(all_tests ${RWLOCK_STATIC_INIT_TEST_EXEC})
   endif()
-  add_dependencies(all_tests ${RWLOCK_STATIC_INIT_TEST_EXEC})
 
 endif()
 

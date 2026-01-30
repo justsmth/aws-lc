@@ -20,8 +20,10 @@
 
 #include <openssl/err.h>
 
+#if !defined(OPENSSL_WASM_WASI)
 #include <thread>
-#if !defined(OPENSSL_WINDOWS)
+#endif
+#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_WASM_WASI)
  #include <sys/wait.h>
 #endif
 
@@ -240,6 +242,55 @@ FILE* createRawTempFILE() {
   return fopen(filename, "w+b");
 }
 
+#elif defined(OPENSSL_WASM_WASI)
+// WASI doesn't have mkstemp, mkdtemp, or tmpfile. Use counter-based naming
+// with random suffix for uniqueness.
+#include <cstdlib>
+#include <unistd.h>
+#include <openssl/rand.h>
+
+size_t createTempFILEpath(char buffer[PATH_MAX]) {
+  static int temp_counter = 0;
+  uint32_t random_val = 0;
+  RAND_bytes(reinterpret_cast<uint8_t*>(&random_val), sizeof(random_val));
+  int written = snprintf(buffer, PATH_MAX, "awslctest_%d_%08x.tmp",
+                         temp_counter++, random_val);
+  if (written < 0 || written >= PATH_MAX) {
+    return 0;
+  }
+  // Create the file
+  FILE *f = fopen(buffer, "w");
+  if (f == NULL) {
+    return 0;
+  }
+  fclose(f);
+  return strnlen(buffer, PATH_MAX);
+}
+
+size_t createTempDirPath(char buffer[PATH_MAX]) {
+  static int dir_counter = 0;
+  uint32_t random_val = 0;
+  RAND_bytes(reinterpret_cast<uint8_t*>(&random_val), sizeof(random_val));
+  int written = snprintf(buffer, PATH_MAX, "awslctest_dir_%d_%08x",
+                         dir_counter++, random_val);
+  if (written < 0 || written >= PATH_MAX) {
+    return 0;
+  }
+  // WASI supports mkdir
+  if (mkdir(buffer, 0700) != 0) {
+    return 0;
+  }
+  return strnlen(buffer, PATH_MAX);
+}
+
+FILE* createRawTempFILE() {
+  char buffer[PATH_MAX];
+  if (createTempFILEpath(buffer) == 0) {
+    return nullptr;
+  }
+  return fopen(buffer, "w+b");
+}
+
 #else
 #include <cstdlib>
 #include <unistd.h>
@@ -319,7 +370,7 @@ bool osIsAmazonLinux(void) {
 bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFunc) {
   bool res = true;
 
-#if defined(OPENSSL_THREADS)
+#if defined(OPENSSL_THREADS) && !defined(OPENSSL_WASM_WASI)
   // char to be able to pass-as-reference.
   std::vector<char> retValueVec(numberOfThreads, 0);
   std::vector<std::thread> threadVec;
@@ -349,9 +400,8 @@ bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFun
 bool forkAndRunTest(std::function<bool()> child_func,
   std::function<bool()> parent_func) {
 
-#if defined(OPENSSL_WINDOWS)
-  // fork() is not supported on Windows. We could potentially add support for
-  // the CreateProcess API at some point.
+#if defined(OPENSSL_WINDOWS) || defined(OPENSSL_WASM_WASI)
+  // fork() is not supported on Windows or WASI.
   return false;
 #else
   pid_t pid = fork();
