@@ -661,10 +661,13 @@ if(FIPS_SHARED)
       set(INJECT_HASH_APPLE_FLAG "-apple")
     endif()
 
+    go_executable(inject_hash
+                  github.com/aws/aws-lc/util/fipstools/inject_hash)
+    add_custom_target(inject_hash_target DEPENDS inject_hash)
+    add_dependencies(crypto inject_hash_target)
     add_custom_command(
       TARGET crypto POST_BUILD
-      COMMAND ${GO_EXECUTABLE} run
-      ${AWSLC_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      COMMAND ${CMAKE_CURRENT_BINARY_DIR}/inject_hash
       -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
       WORKING_DIRECTORY ${AWSLC_SOURCE_DIR}
     )
