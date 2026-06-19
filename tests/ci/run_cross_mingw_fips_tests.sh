@@ -70,10 +70,20 @@ EOF
 
 cat ${TARGET_CPU}-${TARGET_PLATFORM}.cmake
 
-# Make the cross-compiled crypto/ssl DLLs and the mingw runtime DLLs
-# (libstdc++, libgcc_s, libwinpthread) discoverable by Wine when it loads the
-# test executables. WINEPATH is a colon-separated list of Unix paths.
-export WINEPATH="${BUILD_ROOT}/crypto:${BUILD_ROOT}/ssl:/usr/lib/gcc/${TARGET_CPU}-${TARGET_PLATFORM}/${GCC_VERSION}-${THREAD_MODEL}:/usr/${TARGET_CPU}-${TARGET_PLATFORM}/lib"
+function wine_z_path {
+  local unix_path="${1%/}"
+  printf 'Z:%s' "${unix_path//\//\\}"
+}
+
+# Make the cross-compiled crypto/ssl DLLs, generated test DLLs, and the mingw
+# runtime DLLs (libstdc++, libgcc_s, libwinpthread) discoverable by Wine when it
+# loads the test executables. WINEPATH is a semicolon-separated list of
+# Windows-style paths.
+export WINEPATH="$(wine_z_path "${BUILD_ROOT}")"
+WINEPATH+=";$(wine_z_path "${BUILD_ROOT}/crypto")"
+WINEPATH+=";$(wine_z_path "${BUILD_ROOT}/ssl")"
+WINEPATH+=";$(wine_z_path "/usr/lib/gcc/${TARGET_CPU}-${TARGET_PLATFORM}/${GCC_VERSION}-${THREAD_MODEL}")"
+WINEPATH+=";$(wine_z_path "/usr/${TARGET_CPU}-${TARGET_PLATFORM}/lib")"
 # Keep Wine quiet and non-interactive in CI.
 export WINEDEBUG="-all"
 
