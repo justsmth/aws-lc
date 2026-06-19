@@ -184,6 +184,13 @@ extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
 #endif
 
+#if defined(__MINGW32__) && defined(BORINGSSL_SHARED_LIBRARY)
+// Defined in fips_shared_support.c and filled in by inject_hash.go with the
+// link-time preferred PE image base. See the comment there for why the runtime
+// cannot read this from the in-memory PE header.
+extern const uint64_t BORINGSSL_bcm_preferred_base;
+#endif
+
 #if defined(OPENSSL_WINDOWS) && defined(BORINGSSL_SHARED_LIBRARY)
 static int hmac_update_module_region(HMAC_CTX *hmac_ctx, const uint8_t *start,
                                      size_t len) {
@@ -215,7 +222,14 @@ static int hmac_update_module_region(HMAC_CTX *hmac_ctx, const uint8_t *start,
 #endif
 
   const uintptr_t preferred_base =
+#if defined(__MINGW32__)
+      // The Windows loader overwrites the in-memory OptionalHeader.ImageBase
+      // with the actual load address, so use the link-time base recorded by
+      // inject_hash.go instead.
+      (uintptr_t)BORINGSSL_bcm_preferred_base;
+#else
       (uintptr_t)nt_headers->OptionalHeader.ImageBase;
+#endif
   const uintptr_t load_delta = (uintptr_t)image_base - preferred_base;
   const IMAGE_DATA_DIRECTORY *const reloc_dir =
       &nt_headers->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
