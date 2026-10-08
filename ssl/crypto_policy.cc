@@ -534,13 +534,14 @@ size_t MergeDefaultPQSigalgs(uint16_t *ids, size_t n, size_t cap,
 // |SSL_CTX_set_ciphersuites| when it is true, and returns false having left |ctx|
 // as it was if any step fails.
 //
-// Neither public setter is a no-op on failure. |ssl_create_cipher_list| installs
+// |SSL_CTX_set_ciphersuites| already leaves |ctx| as it was on failure, but
+// |SSL_CTX_set_cipher_list| does not. It has |ssl_create_cipher_list| install
 // its result, empty or not, before reporting that the rule matched nothing, and
-// the |update_cipher_list| that merges the TLS 1.2 and TLS 1.3 lists back
-// together allocates, so it can fail after the first list is already in place.
-// Either way the context is left holding part of a policy it could not apply,
-// which for the first is no ciphers at all. Building both lists aside and moving
-// them in once every step has succeeded is what keeps a failure to the defaults.
+// the |update_cipher_list| that merges the TLS 1.3 suites back in allocates, so
+// it can fail after the new list is already in place. Either way the context is
+// left holding part of a policy it could not apply, which for the first is no
+// ciphers at all. Building both lists aside and moving them in once every step
+// has succeeded is what keeps a failure to the defaults.
 bool ApplyCipherRule(SSL_CTX *ctx, const char *rule, bool config_tls13) {
   const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
                                                : EVP_has_aes_hardware();
