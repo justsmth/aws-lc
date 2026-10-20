@@ -6,6 +6,20 @@ on:
     branches: ["*"]
   schedule:
     - cron: '0 8 * * *'
+  workflow_dispatch:
+    inputs:
+      freebsd:
+        description: "Run FreeBSD (x86-64 and arm64, full test suite)"
+        type: boolean
+        default: true
+      openbsd:
+        description: "Run OpenBSD (x86-64 and arm64)"
+        type: boolean
+        default: true
+      netbsd:
+        description: "Run NetBSD (x86-64 and arm64)"
+        type: boolean
+        default: true
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -22,10 +36,18 @@ permissions:
 # - OpenBSD: schedule only (daily)
 # - NetBSD: schedule only (daily)
 # Full test suite (including slow tests) runs on the daily schedule.
+#
+# The schedule only ever runs against the default branch. To get the same
+# coverage on another branch, dispatch the workflow manually, e.g.:
+#   gh workflow run bsd-ci.yml --ref <branch> -f freebsd=false -f netbsd=false
+# A manual dispatch runs the full (schedule) configuration for each selected OS,
+# and is the only event that runs these jobs in forks.
 
 jobs:
   freebsd:
-    if: github.repository_owner == 'aws'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.freebsd) ||
+      (github.event_name != 'workflow_dispatch' && github.repository_owner == 'aws')
     runs-on: ubuntu-latest
     name: FreeBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
@@ -36,7 +58,7 @@ jobs:
         version:
           - "14.2"
           - "15.0"
-        include: ${{ github.event_name == 'schedule' && fromJSON('[{"arch":"arm64","version":"14.2"},{"arch":"arm64","version":"15.0"}]') || fromJSON('[]') }}
+        include: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && fromJSON('[{"arch":"arm64","version":"14.2"},{"arch":"arm64","version":"15.0"}]') || fromJSON('[]') }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -47,7 +69,7 @@ jobs:
           AWS_LC_GO_TEST_TIMEOUT: 90m
           AWS_LC_SSL_RUNNER_IDLE_TIMEOUT: 120s
           AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT: 1
-          AWS_LC_NO_SLOW_TESTS: ${{ github.event_name != 'schedule' && '1' || '0' }}
+          AWS_LC_NO_SLOW_TESTS: ${{ (github.event_name != 'schedule' && github.event_name != 'workflow_dispatch') && '1' || '0' }}
           GOFLAGS: "-buildvcs=false"
         with:
           environment_variables: "AWS_LC_GO_TEST_TIMEOUT AWS_LC_SSL_RUNNER_IDLE_TIMEOUT AWS_LC_SSL_RUNNER_RETRY_ON_TIMEOUT AWS_LC_NO_SLOW_TESTS GOFLAGS"
@@ -62,7 +84,9 @@ jobs:
             tests/ci/run_bsd_tests.sh
 
   OpenBSD:
-    if: github.event_name == 'schedule'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.openbsd) ||
+      (github.event_name == 'schedule' && github.repository_owner == 'aws')
     runs-on: ubuntu-latest
     name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
@@ -118,7 +142,9 @@ jobs:
             EOF
 
   netbsd:
-    if: github.repository_owner == 'aws' && github.event_name == 'schedule'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.netbsd) ||
+      (github.event_name == 'schedule' && github.repository_owner == 'aws')
     runs-on: ubuntu-latest
     name: NetBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
