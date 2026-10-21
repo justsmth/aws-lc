@@ -1,7 +1,7 @@
 name: BSD CI Tests
 on:
   push:
-    branches: ["main", "fips-*"]
+    branches: ["main", "fips-*", "keccak-armv8-rodata-openbsd-ci"]
   pull_request:
     branches: ["*"]
   schedule:
@@ -62,7 +62,6 @@ jobs:
             tests/ci/run_bsd_tests.sh
 
   OpenBSD:
-    if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
@@ -88,6 +87,9 @@ jobs:
             set -x
             sudo pkg_add cmake ninja go gmake
             sudo pfctl -d
+            printf 'int main(void) { volatile unsigned char c = *(volatile unsigned char *)(void *)main; (void)c; return 0; }\n' > /tmp/xonly_probe.c
+            cc -O0 -o /tmp/xonly_probe /tmp/xonly_probe.c
+            if /tmp/xonly_probe; then echo "XONLY PROBE: .text readable, execute-only NOT enforced"; else echo "XONLY PROBE: exit $? (139 => execute-only enforced)"; fi
             mkdir "${HOME}/bin"
             ln -s /usr/local/bin/gmake "${HOME}/bin/make"
             cat << EOF | sudo tee /etc/login.conf.d/unlimited
