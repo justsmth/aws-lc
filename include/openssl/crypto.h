@@ -54,6 +54,13 @@ OPENSSL_EXPORT int BORINGSSL_self_test(void);
 // and data of the module is matched against a hash injected at build time. It
 // returns one on success or zero if there's a mismatch. This function only
 // exists if the module was built in FIPS mode without ASAN.
+//
+// A mismatch is reported through |AWS_LC_FIPS_failure| and puts the module into
+// the error state (see |AWS_LC_fips_failure_detected|); in the default build
+// that aborts the process before this function returns. When built with
+// BORINGSSL_FIPS_BREAK_TESTS a mismatch is only printed to stderr and one is
+// returned, because the break-test tooling modifies the binary after the hash
+// was computed.
 OPENSSL_EXPORT int BORINGSSL_integrity_test(void);
 
 // CRYPTO_pre_sandbox_init initializes the crypto library, pre-acquiring some

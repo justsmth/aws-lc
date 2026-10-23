@@ -1233,6 +1233,19 @@ void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
 #endif
 #endif
 
+// AWS_LC_FIPS_fatal_failure is |AWS_LC_FIPS_failure| for failures that the
+// application must not be allowed to survive, such as a failed integrity test:
+// if the module's own code cannot be trusted there is no safe way to continue.
+// It puts the module into the error state, invokes the FIPS failure callback
+// (if one is in use) so that the application can record |message|, and then
+// always prints |message| to |stderr| and aborts. In the default build it is
+// therefore identical to |AWS_LC_FIPS_failure|.
+#if defined(_MSC_VER)
+__declspec(noreturn) void AWS_LC_FIPS_fatal_failure(const char *message);
+#else
+void AWS_LC_FIPS_fatal_failure(const char *message) __attribute__((noreturn));
+#endif
+
 // AWS_LC_FIPS_enter_error_state puts the module into the error state. The
 // error state is sticky: once entered it persists until the process exits and
 // |AWS_LC_fips_failure_detected| returns one. This is called by

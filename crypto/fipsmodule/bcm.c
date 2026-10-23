@@ -201,7 +201,7 @@ static void assert_within(const void *start, const void *symbol,
   assert(strlen(symbol_name) < MAX_FUNCTION_NAME);
   char message[MAX_WITHIN_MSG_LEN] = {0};
   snprintf(message, sizeof(message), ASSERT_WITHIN_MSG, symbol_name, start, symbol, end);
-  AWS_LC_FIPS_failure(message);
+  AWS_LC_FIPS_fatal_failure(message);
 }
 
 static void assert_not_within(const void *start, const void *symbol,
@@ -217,7 +217,7 @@ static void assert_not_within(const void *start, const void *symbol,
   assert(strlen(symbol_name) < MAX_FUNCTION_NAME);
   char message[MAX_OUTSIDE_MSG_LEN] = {0};
   snprintf(message, sizeof(message), ASSERT_OUTSIDE_MSG, symbol_name, symbol, start, symbol, end);
-  AWS_LC_FIPS_failure(message);
+  AWS_LC_FIPS_fatal_failure(message);
 }
 
 // TODO: Re-enable once all data has been moved out of .text segments CryptoAlg-2360
@@ -275,11 +275,18 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   // Integrity tests cannot run under ASAN or MSAN because it involves reading
   // the full .text section, which triggers the global-buffer overflow detection
   // (ASAN) or use of uninstrumented code (MSAN).
+  //
+  // An integrity failure means the module's own code cannot be trusted, so it
+  // is fatal even when the application supplied a FIPS failure callback. The
+  // callback is still invoked first so that the application can log it.
   if (!BORINGSSL_integrity_test()) {
-    AWS_LC_FIPS_failure("Integrity test failed");
+    AWS_LC_FIPS_fatal_failure("Integrity test failed");
   }
 #endif  // !ASAN && !MSAN
 
+  // A failed start-up KAT only puts the module into the error state: the code
+  // is intact, so with a FIPS failure callback the application may continue
+  // and the gated services fail cleanly. Without a callback this aborts.
   if (!boringssl_self_test_startup()) {
     AWS_LC_FIPS_failure("Power on self test failed");
   }
@@ -375,18 +382,39 @@ int BORINGSSL_integrity_test(void) {
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
-  // Check the integrity but don't call AWS_LC_FIPS_failure or return 0
+  // Check the integrity but don't call AWS_LC_FIPS_failure or return 0. The
+  // break-test tooling patches KAT inputs in the binary, which necessarily
+  // changes the module hash, so a mismatch is expected in that configuration.
   check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", false);
+  const int ret = 1;
 #else
-  // Check the integrity, call AWS_LC_FIPS_failure if it doesn't match which will
-  // result in an abort
-  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", true);
+  // Check the integrity and call AWS_LC_FIPS_failure if it doesn't match. In
+  // the default build that aborts. With a FIPS failure callback it returns and
+  // the mismatch is reported to the caller, which at power-on is fatal.
+  const int ret = check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", true);
 #endif
 
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
-  return 1;
+  return ret;
 }
 #endif  // !ASAN && !MSAN
+
+// fips_failure_abort prints |message| and terminates the process. This is the
+// only way a FIPS failure ends when no callback is in use.
+#if defined(_MSC_VER)
+__declspec(noreturn) static void fips_failure_abort(const char *message);
+#else
+static void fips_failure_abort(const char *message) __attribute__((noreturn));
+#endif
+
+static void fips_failure_abort(const char *message) {
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+  fflush(stderr);
+  for (;;) {
+    abort();
+    exit(1);
+  }
+}
 
 void AWS_LC_FIPS_failure(const char* message) {
   // Record the failure before anything else so that the module is in the
@@ -399,12 +427,19 @@ void AWS_LC_FIPS_failure(const char* message) {
   }
   // Fallback to the default behavior if the callback is not defined
 #endif
-  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
-  fflush(stderr);
-  for (;;) {
-    abort();
-    exit(1);
+  fips_failure_abort(message);
+}
+
+void AWS_LC_FIPS_fatal_failure(const char *message) {
+  AWS_LC_FIPS_enter_error_state();
+#if defined(AWSLC_FIPS_FAILURE_CALLBACK)
+  // Give the application the message, but do not let it keep the process
+  // alive: the caller has determined that the module cannot be trusted.
+  if (AWS_LC_fips_failure_callback != NULL) {
+    AWS_LC_fips_failure_callback(message);
   }
+#endif
+  fips_failure_abort(message);
 }
 #else  // BORINGSSL_FIPS
 void AWS_LC_FIPS_failure(const char* message) {
