@@ -89,6 +89,11 @@ uint64_t FIPS_service_indicator_after_call(void) {
 }
 
 void FIPS_service_indicator_update_state(void) {
+  // A module in the error state provides no approved services, so the
+  // indicator must never advance once a self-test has failed.
+  if (AWS_LC_fips_failure_detected()) {
+    return;
+  }
   struct fips_service_indicator_state *indicator = service_indicator_get();
   if (indicator && indicator->lock_state == STATE_UNLOCKED) {
     indicator->counter++;

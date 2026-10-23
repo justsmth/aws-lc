@@ -568,12 +568,22 @@ static void rand_bytes_core(
   CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
 }
 
-static void rand_bytes_impl(thread_local_data_t tls_key, uint8_t *out,
+// rand_bytes_impl generates |out_len| bytes into |out| using the thread-local
+// DRBG identified by |tls_key|. It returns one on success and zero if the
+// module is in the FIPS error state, in which case nothing is written.
+static int rand_bytes_impl(thread_local_data_t tls_key, uint8_t *out,
   size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
   int use_user_pred_resistance) {
 
+  // A module in the error state must not output any data, including random
+  // bytes. This check happens before any DRBG state is touched so that nothing
+  // below needs to handle a partially completed request.
+  if (AWS_LC_FIPS_service_blocked()) {
+    return 0;
+  }
+
   if (out_len == 0) {
-    return;
+    return 1;
   }
 
   // Lock state here because CTR-DRBG-generate can be invoked multiple times
@@ -604,6 +614,7 @@ static void rand_bytes_impl(thread_local_data_t tls_key, uint8_t *out,
 
   FIPS_service_indicator_unlock_state();
   FIPS_service_indicator_update_state();
+  return 1;
 }
 
 int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,
@@ -611,17 +622,15 @@ int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,
 
   GUARD_PTR_ABORT(user_pred_resistance);
 
-  rand_bytes_impl(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, out, out_len,
+  return rand_bytes_impl(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, out, out_len,
     user_pred_resistance, RAND_USE_USER_PRED_RESISTANCE);
-  return 1;
 }
 
 int RAND_bytes(uint8_t *out, size_t out_len) {
 
   static const uint8_t kZeroPredResistance[RAND_PRED_RESISTANCE_LEN] = {0};
-  rand_bytes_impl(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, out, out_len,
+  return rand_bytes_impl(OPENSSL_THREAD_LOCAL_PRIVATE_RAND, out, out_len,
     kZeroPredResistance, RAND_NO_USER_PRED_RESISTANCE);
-  return 1;
 }
 
 int RAND_priv_bytes(uint8_t *out, size_t out_len) {
@@ -630,9 +639,8 @@ int RAND_priv_bytes(uint8_t *out, size_t out_len) {
 
 int RAND_public_bytes(uint8_t *out, size_t out_len) {
   static const uint8_t kZeroPredResistance[RAND_PRED_RESISTANCE_LEN] = {0};
-  rand_bytes_impl(OPENSSL_THREAD_LOCAL_PUBLIC_RAND, out, out_len,
+  return rand_bytes_impl(OPENSSL_THREAD_LOCAL_PUBLIC_RAND, out, out_len,
     kZeroPredResistance, RAND_NO_USER_PRED_RESISTANCE);
-  return 1;
 }
 
 int RAND_pseudo_bytes(uint8_t *out, size_t out_len) {

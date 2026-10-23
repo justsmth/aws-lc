@@ -18,6 +18,12 @@ extern "C" {
 
 // RAND_bytes writes |len| bytes of random data to |buf| and returns one. In the
 // event that sufficient random data can not be obtained, |abort| is called.
+//
+// In a FIPS build it returns zero, writes nothing and adds
+// |ERR_R_FIPS_MODULE_ERROR_STATE| to the error queue if the module is in the
+// error state (see |AWS_LC_fips_failure_detected|). This can only be observed
+// when a FIPS failure callback is in use; otherwise the failure that caused the
+// error state has already aborted the process.
 OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
 
 // RAND_priv_bytes is a wrapper around |RAND_bytes| provided for compatibility.
@@ -27,7 +33,8 @@ OPENSSL_EXPORT int RAND_priv_bytes(uint8_t *buf, size_t len);
 // RAND_public_bytes writes |len| bytes of random data to |buf| and returns one.
 // In the event that sufficient random data can not be obtained, |abort| is
 // called. |RAND_public_bytes| and |RAND_bytes| do not use the same state to
-// generate output.
+// generate output. It fails in the FIPS error state in the same way as
+// |RAND_bytes|.
 OPENSSL_EXPORT int RAND_public_bytes(uint8_t *out, size_t out_len);
 
 // RAND_bytes_with_user_prediction_resistance is functionally equivalent to

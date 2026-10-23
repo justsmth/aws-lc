@@ -2455,7 +2455,14 @@ err:
 // covers both a failure of this algorithm's KAT (the once completing does not
 // mean the KAT passed) and a failure reported earlier by any other test. The
 // result is sticky: a failed KAT is never re-run.
+//
+// The error state is also checked first so that no KAT starts once the module
+// has failed. The ML-KEM and ML-DSA KATs include key generation and its PCT,
+// which draw randomness, and the DRBG is blocked in the error state.
 static int boringssl_ensure_self_test(CRYPTO_once_t *once, void (*run)(void)) {
+  if (AWS_LC_FIPS_service_blocked()) {
+    return 0;
+  }
   CRYPTO_once(once, run);
   return !AWS_LC_FIPS_service_blocked();
 }
@@ -3122,6 +3129,12 @@ err:
 
 // BORINGSSL_self_test does not abort if any tests fail
 int BORINGSSL_self_test(void) {
+  // Once the module is in the error state the KATs must not run: the ML-KEM
+  // and ML-DSA key generation KATs include a PCT that draws randomness, and
+  // the DRBG is blocked. The module is already known to have failed.
+  if (AWS_LC_FIPS_service_blocked()) {
+    return 0;
+  }
   if (!boringssl_self_test_fast() ||
       // When requested to run self tests, also run the lazy tests.
       !boringssl_self_test_rsa() ||

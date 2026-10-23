@@ -1291,7 +1291,10 @@ int boringssl_ensure_hasheddsa_self_test(void);
 
 #else
 
-// Outside of FIPS mode, the lazy tests are no-ops that always succeed.
+// Outside of FIPS mode, the lazy tests are no-ops that always succeed and the
+// module never enters the error state.
+
+OPENSSL_INLINE int AWS_LC_FIPS_service_blocked(void) { return 0; }
 
 OPENSSL_INLINE int boringssl_ensure_rsa_self_test(void) { return 1; }
 OPENSSL_INLINE int boringssl_ensure_ecc_self_test(void) { return 1; }

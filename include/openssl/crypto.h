@@ -46,7 +46,8 @@ OPENSSL_EXPORT int CRYPTO_is_confidential_build(void);
 OPENSSL_EXPORT int CRYPTO_has_asm(void);
 
 // BORINGSSL_self_test triggers the FIPS KAT-based self tests. It returns one on
-// success and zero on error.
+// success and zero on error. Once the module is in the FIPS error state (see
+// |AWS_LC_fips_failure_detected|) it returns zero without running any test.
 OPENSSL_EXPORT int BORINGSSL_self_test(void);
 
 // BORINGSSL_integrity_test triggers the module's integrity test where the code
@@ -121,8 +122,14 @@ OPENSSL_EXPORT int FIPS_mode(void);
 // function can only be observed returning one when AWS-LC was built with
 // AWSLC_FIPS_FAILURE_CALLBACK and the application supplied an
 // |AWS_LC_fips_failure_callback| that returned. While in the error state
-// |FIPS_mode| returns zero. See crypto/fipsmodule/FIPS.md for the full
-// description of the error state.
+// |FIPS_mode| returns zero, |RAND_bytes| and the other DRBG entry points fail
+// with |ERR_R_FIPS_MODULE_ERROR_STATE|, every algorithm guarded by a lazy
+// self-test (RSA, ECDSA, ECDH, FFDH, ML-KEM, ML-DSA, Ed25519 and Ed25519ph)
+// fails the same way, and the FIPS service indicator never reports another
+// service as approved. Services that are not listed here (for example AES,
+// the SHA family, HMAC and the KDFs) are not blocked by the module itself and
+// applications must consult this function before relying on them. See
+// crypto/fipsmodule/FIPS.md for the full description of the error state.
 OPENSSL_EXPORT int AWS_LC_fips_failure_detected(void);
 
 // FIPS_is_entropy_cpu_jitter returns 1 if CPU jitter is used as the entropy source
