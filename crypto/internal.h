@@ -1212,17 +1212,22 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 // error state (see |AWS_LC_FIPS_enter_error_state|). What happens next depends
 // on how AWS-LC is built:
 // - When AWS-LC is not in FIPS mode it prints |message| to |stderr|.
-// - If AWS-LC is built with FIPS it prints |message| to |stderr| and prevents
-//     any further cryptographic operations by the current process.
-// - If AWS-LC is built with FIPS, AWSLC_FIPS_FAILURE_CALLBACK, and the
-//      application does not define the AWS_LC_fips_failure_callback function
-//      the normal behavior FIPS behavior is used.
-// - If AWS-LC is built with FIPS, AWSLC_FIPS_FAILURE_CALLBACK, and the
-//      application defines the AWS_LC_fips_failure_callback function that
-//      function is called with |message| and |AWS_LC_FIPS_failure| returns.
-//      The module remains in the error state for the rest of the process
-//      lifetime, see |AWS_LC_fips_failure_detected| in crypto.h and
-//      FIPS.md.
+// - If AWS-LC is built with FIPS it prints |message| to |stderr| and aborts,
+//     which prevents any further cryptographic operations by the current
+//     process.
+// - If AWS-LC is built with FIPS and AWSLC_FIPS_FAILURE_CALLBACK, and the
+//     application does not define the AWS_LC_fips_failure_callback function,
+//     the normal FIPS behavior is used.
+// - If AWS-LC is built with FIPS and AWSLC_FIPS_FAILURE_CALLBACK, and the
+//     application defines the AWS_LC_fips_failure_callback function, that
+//     function is called with |message| and |AWS_LC_FIPS_failure| returns.
+//     The module remains in the error state for the rest of the process
+//     lifetime: |FIPS_mode| returns zero, the DRBG and every lazily
+//     self-tested algorithm fail with |ERR_R_FIPS_MODULE_ERROR_STATE|, and
+//     the service indicator never advances. See |AWS_LC_fips_failure_detected|
+//     in crypto.h and "Self-test failures and the error state" in FIPS.md.
+//     Failures that must never be survived (the integrity test) go through
+//     |AWS_LC_FIPS_fatal_failure| instead.
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
 void AWS_LC_FIPS_failure(const char* message);
 #else
@@ -1257,6 +1262,7 @@ void AWS_LC_FIPS_enter_error_state(void);
 // and returns one; the calling service must then fail without producing any
 // output.
 int AWS_LC_FIPS_service_blocked(void);
+
 // boringssl_self_test_startup runs all startup self tests and returns one on
 // success or zero on error. Startup self tests do not include lazy tests.
 // Call |BORINGSSL_self_test| to run every self test.

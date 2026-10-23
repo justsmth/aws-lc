@@ -127,6 +127,43 @@ Some FIPS tests cannot be broken by replacing a known string in the binary. For 
 4. `MLKEM_PWCT`
 5. `MLDSA_PWCT`
 
+## Self-test failures and the error state
+
+Every self-test failure in the module is reported through `AWS_LC_FIPS_failure` in `bcm.c`: the integrity test, the start-up known-answer tests, the lazy KATs that run on first use of an algorithm, and the pairwise consistency tests (PCTs) performed during key generation. `AWS_LC_FIPS_failure` first records that the module has failed and then reports the failure. By default the report is a message on `stderr` followed by `abort()`, so the process never runs another cryptographic operation after a failure.
+
+### The failure callback
+
+Some applications cannot tolerate `abort()` and need to observe the failure instead. For those, AWS-LC can be built with `-DAWSLC_FIPS_FAILURE_CALLBACK` in `CMAKE_C_FLAGS`. This is only supported for the static library build on ELF platforms. The module then declares a weak symbol
+
+```c
+void AWS_LC_fips_failure_callback(const char *message);
+```
+
+and, if the application links a definition, `AWS_LC_FIPS_failure` calls it with the failure message and returns instead of aborting. If no definition is linked the default behaviour is used. The callback runs on the thread that detected the failure, which for start-up failures is the thread running the module's constructor before `main`, so it must not rely on the application having been initialised.
+
+### The error state
+
+Whether or not a callback is in use, the module enters a process-wide *error state* before the failure is reported. The state is a single flag in the module's BSS, set atomically, that is never cleared: there is no recovery path other than restarting the process. The application can query it at any time with `AWS_LC_fips_failure_detected()` (declared in `openssl/crypto.h`, always 0 in non-FIPS builds). While the module is in the error state:
+
+* `FIPS_mode()` returns 0 and `AWS_LC_fips_failure_detected()` returns 1.
+* The DRBG refuses to produce output: `RAND_bytes`, `RAND_priv_bytes`, `RAND_public_bytes` and `RAND_bytes_with_user_prediction_resistance` return 0 without writing anything and add `ERR_R_FIPS_MODULE_ERROR_STATE` to the error queue.
+* Every algorithm that is guarded by a lazy self-test fails the same way without running the algorithm: RSA (sign, verify, raw private operations and key generation), ECDSA, ECDH and `EC_POINT_mul`, FFDH, ML-KEM, ML-DSA, Ed25519 and Ed25519ph. A lazy KAT is never run once the module is in the error state, and a KAT that has failed is never re-run.
+* `BORINGSSL_self_test()` returns 0 without running any KAT.
+* The FIPS service indicator never advances, so no service is reported as approved.
+* `AWS_LC_FIPS_failure` continues to report any further failure that is detected (for example a start-up KAT failure is followed by `Power on self test failed`); the error state does not suppress the callback.
+
+In the default build none of this is observable because the first failure aborts the process. With a callback, the module stays in this state for the lifetime of the process and the application decides what to do (log, shut down, restart, ...).
+
+### Failures that are always fatal
+
+A failed integrity test means the module's own code cannot be trusted, so there is no safe way to continue. `BORINGSSL_bcm_power_on_self_test` therefore uses `AWS_LC_FIPS_fatal_failure` for it: the error state is entered, the callback (if any) is invoked with the message so that the application can record it, and then the process aborts regardless. The same applies to the module-layout assertions performed inside `BORINGSSL_integrity_test`, and to a failure of the SHA-256 or HMAC-SHA-256 CAST that must pass before the integrity hash can be computed. A failure of the start-up KATs or of the CPU jitter entropy source initialisation does not abort when a callback is in use: the module code is intact, so the module enters the error state and the services listed above fail cleanly.
+
+### What the application remains responsible for
+
+The module only blocks the services listed above. Symmetric ciphers, hashes, MACs, KDFs, signature verification entry points that bypass the lazy self-test gate and other services keep functioning in the error state (though they are no longer reported as approved by the service indicator). An application that uses the callback and intends to keep running must therefore check `AWS_LC_fips_failure_detected()` before relying on any service it needs to be approved, and must treat the module as non-compliant from the moment the callback is first invoked. The callback is the only place the failure message is delivered; the module does not retain it.
+
+This behaviour is exercised by `crypto/fips_callback_test.cc` and `tests/ci/run_fips_callback_tests.sh`, which break each KAT and PCT in turn and check that the triggering operation fails, that the module stays in the error state, and that integrity failures still abort.
+
 ## Running ACVP tests
 
 See `util/fipstools/acvp/ACVP.md` for details of how ACVP testing is done.
@@ -238,7 +275,7 @@ The delocator script performs a number of other transformations which are worth 
 
 #### Integrity testing
 
-In order to actually implement the integrity test, a constructor function within the module calculates an HMAC from `module_start` to `module_end` using a fixed, all-zero key. It compares the result with the known-good value added (by the script) to the unhashed portion of the text segment. If they don't match, it calls `exit` in an infinite loop.
+In order to actually implement the integrity test, a constructor function within the module calculates an HMAC from `module_start` to `module_end` using a fixed, all-zero key. It compares the result with the known-good value added (by the script) to the unhashed portion of the text segment. If they don't match, the module enters the error state and the process aborts, even when a FIPS failure callback is in use (see "Failures that are always fatal" above).
 Initially the known-good value will be incorrect. Another script (`inject_hash.go`) calculates the correct value from the assembled object and injects it back into the object.
 
 ### Breaking the integrity test
