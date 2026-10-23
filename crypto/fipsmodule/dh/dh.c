@@ -177,7 +177,9 @@ int DH_set_length(DH *dh, unsigned priv_length) {
 
 int DH_generate_key(DH *dh) {
   SET_DIT_AUTO_RESET;
-  boringssl_ensure_ffdh_self_test();
+  if (!boringssl_ensure_ffdh_self_test()) {
+    return 0;
+  }
 
   if (!dh_check_params_fast(dh)) {
     return 0;
@@ -359,14 +361,18 @@ int dh_compute_key_padded_no_self_test(unsigned char *out,
 }
 
 int DH_compute_key_padded(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
-  boringssl_ensure_ffdh_self_test();
+  if (!boringssl_ensure_ffdh_self_test()) {
+    return -1;
+  }
   SET_DIT_AUTO_RESET;
 
   return dh_compute_key_padded_no_self_test(out, peers_key, dh);
 }
 
 int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
-  boringssl_ensure_ffdh_self_test();
+  if (!boringssl_ensure_ffdh_self_test()) {
+    return -1;
+  }
   SET_DIT_AUTO_RESET;
 
   BN_CTX *ctx = BN_CTX_new();

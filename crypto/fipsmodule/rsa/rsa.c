@@ -568,7 +568,9 @@ static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
 
 int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                  const uint8_t *in, size_t in_len, int padding) {
-  boringssl_ensure_rsa_self_test();
+  if (!boringssl_ensure_rsa_self_test()) {
+    return 0;
+  }
   SET_DIT_AUTO_RESET;
 
   return rsa_sign_raw_no_self_test(rsa, out_len, out, max_out, in, in_len,
@@ -844,7 +846,9 @@ err:
 
 int RSA_sign(int hash_nid, const uint8_t *digest, size_t digest_len,
              uint8_t *out, unsigned *out_len, RSA *rsa) {
-  boringssl_ensure_rsa_self_test();
+  if (!boringssl_ensure_rsa_self_test()) {
+    return 0;
+  }
   SET_DIT_AUTO_RESET;
 
   return rsa_sign_no_self_test(hash_nid, digest, digest_len, out, out_len, rsa);
@@ -958,7 +962,9 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
 
 int RSA_verify(int hash_nid, const uint8_t *digest, size_t digest_len,
                const uint8_t *sig, size_t sig_len, RSA *rsa) {
-  boringssl_ensure_rsa_self_test();
+  if (!boringssl_ensure_rsa_self_test()) {
+    return 0;
+  }
   SET_DIT_AUTO_RESET;
   return rsa_verify_no_self_test(hash_nid, digest, digest_len, sig, sig_len,
                                  rsa);
@@ -1015,7 +1021,9 @@ int rsa_private_transform_no_self_test(RSA *rsa, uint8_t *out,
 
 int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                           size_t len) {
-  boringssl_ensure_rsa_self_test();
+  if (!boringssl_ensure_rsa_self_test()) {
+    return 0;
+  }
   SET_DIT_AUTO_RESET;
   return rsa_private_transform_no_self_test(rsa, out, in, len);
 }

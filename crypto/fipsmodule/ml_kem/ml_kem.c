@@ -88,7 +88,9 @@ int ml_kem_512_keypair_deterministic(uint8_t *public_key /* OUT */,
                                      uint8_t *secret_key /* OUT */,
                                      size_t *secret_len /* IN_OUT */,
                                      const uint8_t *seed /* IN */) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   return ml_kem_512_keypair_deterministic_no_self_test(
       public_key, public_len, secret_key, secret_len, seed);
 }
@@ -135,7 +137,9 @@ int ml_kem_512_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
                                          size_t *shared_secret_len /* IN_OUT */,
                                          const uint8_t *public_key /* IN  */,
                                          const uint8_t *seed       /* IN */) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   return ml_kem_512_encapsulate_deterministic_no_self_test(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed);
 }
 
@@ -164,7 +168,9 @@ int ml_kem_512_decapsulate(uint8_t *shared_secret    /* OUT */,
                            size_t *shared_secret_len /* IN_OUT */,
                            const uint8_t *ciphertext /* IN */,
                            const uint8_t *secret_key /* IN */) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   return ml_kem_512_decapsulate_no_self_test(shared_secret, shared_secret_len, ciphertext, secret_key);
 }
 
@@ -182,7 +188,9 @@ int ml_kem_768_keypair_deterministic(uint8_t *public_key /* OUT */,
                                      uint8_t *secret_key /* OUT */,
                                      size_t *secret_len  /* IN_OUT */,
                                      const uint8_t *seed /* IN */) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   return ml_kem_768_keypair_deterministic_no_self_test(public_key, public_len, secret_key, secret_len, seed);
 }
 
@@ -229,7 +237,9 @@ int ml_kem_768_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
                                          size_t *shared_secret_len /* IN_OUT */,
                                          const uint8_t *public_key /* IN */,
                                          const uint8_t *seed       /* IN */) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   return ml_kem_768_encapsulate_deterministic_no_self_test(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed);
 }
 
@@ -258,7 +268,9 @@ int ml_kem_768_decapsulate(uint8_t *shared_secret    /* OUT */,
                            size_t *shared_secret_len /* IN_OUT */,
                            const uint8_t *ciphertext /* IN */,
                            const uint8_t *secret_key /* IN */) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   return ml_kem_768_decapsulate_no_self_test(shared_secret, shared_secret_len, ciphertext, secret_key);
 }
 
@@ -275,7 +287,9 @@ int ml_kem_1024_keypair_deterministic(uint8_t *public_key /* OUT */,
                                       uint8_t *secret_key /* OUT */,
                                       size_t *secret_len  /* IN_OUT */,
                                       const uint8_t *seed /* IN */) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   return ml_kem_1024_keypair_deterministic_no_self_test(public_key, public_len, secret_key, secret_len, seed);
 }
 
@@ -321,7 +335,9 @@ int ml_kem_1024_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
                                           size_t *shared_secret_len /* IN_OUT */,
                                           const uint8_t *public_key /* IN */,
                                           const uint8_t *seed       /* IN */) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   return ml_kem_1024_encapsulate_deterministic_no_self_test(ciphertext, ciphertext_len, shared_secret, shared_secret_len, public_key, seed);
 }
 
@@ -350,7 +366,9 @@ int ml_kem_1024_decapsulate(uint8_t *shared_secret    /* OUT */,
                             size_t *shared_secret_len /* IN_OUT */,
                             const uint8_t *ciphertext /* IN */,
                             const uint8_t *secret_key /* IN */) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   return ml_kem_1024_decapsulate_no_self_test(shared_secret, shared_secret_len, ciphertext, secret_key);
 }
 
@@ -365,7 +383,9 @@ int ml_kem_1024_decapsulate_no_self_test(uint8_t *shared_secret    /* OUT */,
 int ml_kem_common_keypair(int (*keypair)(uint8_t * public_key, uint8_t *secret_key),
                           output_buffer public_key,
                           output_buffer secret_key) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   if (!check_buffer(public_key) || !check_buffer(secret_key)) {
     return ML_KEM_FAILURE;
   }
@@ -404,7 +424,9 @@ int ml_kem_common_encapsulate(int (*encapsulate)(uint8_t *ciphertext, uint8_t *s
                               output_buffer ciphertext,
                               output_buffer shared_secret,
                               const uint8_t *public_key) {
-  boringssl_ensure_ml_kem_self_test();
+  if (!boringssl_ensure_ml_kem_self_test()) {
+    return ML_KEM_FAILURE;
+  }
   if (!check_buffer(ciphertext) || !check_buffer(shared_secret)) {
     return ML_KEM_FAILURE;
   }

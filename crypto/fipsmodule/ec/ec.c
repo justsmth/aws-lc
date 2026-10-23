@@ -863,7 +863,9 @@ err:
 
 int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
                  const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
-  boringssl_ensure_ecc_self_test();
+  if (!boringssl_ensure_ecc_self_test()) {
+    return 0;
+  }
   SET_DIT_AUTO_RESET;
 
   return ec_point_mul_no_self_test(group, r, g_scalar, p, p_scalar, ctx);

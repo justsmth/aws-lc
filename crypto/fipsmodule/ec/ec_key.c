@@ -473,7 +473,10 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
   // Hence, must lock here.
   FIPS_service_indicator_lock_state();
 
-  boringssl_ensure_ecc_self_test();
+  if (!boringssl_ensure_ecc_self_test()) {
+    FIPS_service_indicator_unlock_state();
+    return 0;
+  }
 
   if (EC_KEY_generate_key(eckey) && EC_KEY_check_fips(eckey)) {
     ret = 1;

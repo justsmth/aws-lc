@@ -73,8 +73,9 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   const uint8_t seed[ED25519_SEED_LEN]) {
   // ED25519_keypair already ensures this with the same check, and is also the
   // function that is approved for FIPS (sets the indicator). Ensuring it here
-  // for brevity.
-  boringssl_ensure_eddsa_self_test();
+  // for brevity. This function has no way to report a failure, so the result
+  // is deliberately ignored; the approved entry points check it.
+  (void)boringssl_ensure_eddsa_self_test();
 
   // Step: rfc8032 5.1.5.1
   // Compute SHA512(seed).
@@ -131,7 +132,10 @@ int ED25519_keypair_internal(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   // We have to avoid the self tests and digest function in ed25519_keypair_pct
   // from updating the service indicator.
   FIPS_service_indicator_lock_state();
-  boringssl_ensure_eddsa_self_test();
+  if (!boringssl_ensure_eddsa_self_test()) {
+    FIPS_service_indicator_unlock_state();
+    return 0;
+  }
   SET_DIT_AUTO_RESET;
 
   // Ed25519 key generation: rfc8032 5.1.5
@@ -167,8 +171,7 @@ int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1
   //# The context (if present at all) MUST be empty.
   FIPS_service_indicator_lock_state();
-  boringssl_ensure_eddsa_self_test();
-  int res =
+  int res = boringssl_ensure_eddsa_self_test() &&
       ED25519_sign_no_self_test(out_sig, message, message_len, private_key);
   FIPS_service_indicator_unlock_state();
   if (res) {
@@ -314,8 +317,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   //# message (or enough information to reconstruct it, e.g., compressed or
   //# encrypted version) to be verified.
   FIPS_service_indicator_lock_state();
-  boringssl_ensure_eddsa_self_test();
-  int res =
+  int res = boringssl_ensure_eddsa_self_test() &&
       ED25519_verify_no_self_test(message, message_len, signature, public_key);
   FIPS_service_indicator_unlock_state();
   if(res) {
@@ -337,9 +339,9 @@ int ED25519ctx_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
                     const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
                     const uint8_t *context, size_t context_len) {
   FIPS_service_indicator_lock_state();
-  boringssl_ensure_eddsa_self_test();
-  int res = ED25519ctx_sign_no_self_test(out_sig, message, message_len,
-                                         private_key, context, context_len);
+  int res = boringssl_ensure_eddsa_self_test() &&
+      ED25519ctx_sign_no_self_test(out_sig, message, message_len,
+                                   private_key, context, context_len);
   FIPS_service_indicator_unlock_state();
   return res;
 }
@@ -357,9 +359,9 @@ int ED25519ctx_verify(const uint8_t *message, size_t message_len,
                       const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
                       const uint8_t *context, size_t context_len) {
   FIPS_service_indicator_lock_state();
-  boringssl_ensure_eddsa_self_test();
-  int res = ED25519ctx_verify_no_self_test(message, message_len, signature,
-                                           public_key, context, context_len);
+  int res = boringssl_ensure_eddsa_self_test() &&
+      ED25519ctx_verify_no_self_test(message, message_len, signature,
+                                     public_key, context, context_len);
   FIPS_service_indicator_unlock_state();
   return res;
 }
@@ -380,9 +382,9 @@ int ED25519ph_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   //= https://www.rfc-editor.org/rfc/rfc8032#section-5.1
   //# For Ed25519ph, phflag=1 and PH is SHA512 instead.
   FIPS_service_indicator_lock_state();
-  boringssl_ensure_hasheddsa_self_test();
-  int res = ED25519ph_sign_no_self_test(out_sig, message, message_len,
-                                        private_key, context, context_len);
+  int res = boringssl_ensure_hasheddsa_self_test() &&
+      ED25519ph_sign_no_self_test(out_sig, message, message_len,
+                                  private_key, context, context_len);
   FIPS_service_indicator_unlock_state();
   if (res) {
     FIPS_service_indicator_update_state();
@@ -408,9 +410,9 @@ int ED25519ph_sign_digest(uint8_t out_sig[ED25519_SIGNATURE_LEN],
                           const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
                           const uint8_t *context, size_t context_len) {
   FIPS_service_indicator_lock_state();
-  boringssl_ensure_hasheddsa_self_test();
-  int res = ED25519ph_sign_digest_no_self_test(out_sig, digest, private_key,
-                                               context, context_len);
+  int res = boringssl_ensure_hasheddsa_self_test() &&
+      ED25519ph_sign_digest_no_self_test(out_sig, digest, private_key,
+                                         context, context_len);
   FIPS_service_indicator_unlock_state();
   if (res) {
     FIPS_service_indicator_update_state();
@@ -433,9 +435,9 @@ int ED25519ph_verify(const uint8_t *message, size_t message_len,
                      const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
                      const uint8_t *context, size_t context_len) {
   FIPS_service_indicator_lock_state();
-  boringssl_ensure_hasheddsa_self_test();
-  int res = ED25519ph_verify_no_self_test(message, message_len, signature,
-                                          public_key, context, context_len);
+  int res = boringssl_ensure_hasheddsa_self_test() &&
+      ED25519ph_verify_no_self_test(message, message_len, signature,
+                                    public_key, context, context_len);
   FIPS_service_indicator_unlock_state();
   if (res) {
     FIPS_service_indicator_update_state();
@@ -462,9 +464,9 @@ int ED25519ph_verify_digest(const uint8_t digest[SHA512_DIGEST_LENGTH],
                             const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
                             const uint8_t *context, size_t context_len) {
   FIPS_service_indicator_lock_state();
-  boringssl_ensure_hasheddsa_self_test();
-  int res = ED25519ph_verify_digest_no_self_test(
-      digest, signature, public_key, context, context_len);
+  int res = boringssl_ensure_hasheddsa_self_test() &&
+      ED25519ph_verify_digest_no_self_test(
+          digest, signature, public_key, context, context_len);
   FIPS_service_indicator_unlock_state();
   if(res) {
     FIPS_service_indicator_update_state();

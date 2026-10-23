@@ -1250,51 +1250,56 @@ int AWS_LC_FIPS_service_blocked(void);
 int boringssl_self_test_startup(void);
 
 // boringssl_ensure_rsa_self_test checks whether the RSA self-test has been run
-// in this address space. If not, it runs it and crashes the address space if
-// unsuccessful.
-void boringssl_ensure_rsa_self_test(void);
+// in this address space. If not, it runs it. It returns one if the module may
+// provide RSA services and zero if the self-test failed or the module is in the
+// error state for any other reason (see |AWS_LC_FIPS_service_blocked|). In the
+// default FIPS build a failed self-test crashes the address space instead, so
+// zero is only ever returned when a FIPS failure callback is in use. The
+// remaining |boringssl_ensure_*_self_test| functions behave the same way for
+// their algorithm.
+int boringssl_ensure_rsa_self_test(void);
 
 // boringssl_ensure_ecc_self_test checks whether the ECDSA and ECDH self-test
-// has been run in this address space. If not, it runs it and crashes the
-// address space if unsuccessful.
-void boringssl_ensure_ecc_self_test(void);
+// has been run in this address space. If not, it runs it. See
+// |boringssl_ensure_rsa_self_test| for the return value.
+int boringssl_ensure_ecc_self_test(void);
 
 // boringssl_ensure_ffdh_self_test checks whether the FFDH self-test has been
-// run in this address space. If not, it runs it and crashes the address space
-// if unsuccessful.
-void boringssl_ensure_ffdh_self_test(void);
+// run in this address space. If not, it runs it. See
+// |boringssl_ensure_rsa_self_test| for the return value.
+int boringssl_ensure_ffdh_self_test(void);
 
 // boringssl_ensure_ml_kem_self_test checks whether the ML-KEM self-test
-// has been run in this address space. If not, it runs it and crashes the
-// address space if unsuccessful.
-void boringssl_ensure_ml_kem_self_test(void);
+// has been run in this address space. If not, it runs it. See
+// |boringssl_ensure_rsa_self_test| for the return value.
+int boringssl_ensure_ml_kem_self_test(void);
 
 // boringssl_ensure_ml_dsa_self_test checks whether the ML-DSA self-test
-// has been run in this address space. If not, it runs it and crashes the
-// address space if unsuccessful.
-void boringssl_ensure_ml_dsa_self_test(void);
+// has been run in this address space. If not, it runs it. See
+// |boringssl_ensure_rsa_self_test| for the return value.
+int boringssl_ensure_ml_dsa_self_test(void);
 
 // boringssl_ensure_eddsa_self_test checks whether the EdDSA self-test
-// has been run in this address space. If not, it runs it and crashes the
-// address space if unsuccessful.
-void boringssl_ensure_eddsa_self_test(void);
+// has been run in this address space. If not, it runs it. See
+// |boringssl_ensure_rsa_self_test| for the return value.
+int boringssl_ensure_eddsa_self_test(void);
 
 // boringssl_ensure_hasheddsa_self_test checks whether the HashEdDSA self-test
-// has been run in this address space. If not, it runs it and crashes the
-// address space if unsuccessful.
-void boringssl_ensure_hasheddsa_self_test(void);
+// has been run in this address space. If not, it runs it. See
+// |boringssl_ensure_rsa_self_test| for the return value.
+int boringssl_ensure_hasheddsa_self_test(void);
 
 #else
 
-// Outside of FIPS mode, the lazy tests are no-ops.
+// Outside of FIPS mode, the lazy tests are no-ops that always succeed.
 
-OPENSSL_INLINE void boringssl_ensure_rsa_self_test(void) {}
-OPENSSL_INLINE void boringssl_ensure_ecc_self_test(void) {}
-OPENSSL_INLINE void boringssl_ensure_ffdh_self_test(void) {}
-OPENSSL_INLINE void boringssl_ensure_ml_kem_self_test(void) {}
-OPENSSL_INLINE void boringssl_ensure_ml_dsa_self_test(void) {}
-OPENSSL_INLINE void boringssl_ensure_eddsa_self_test(void) {}
-OPENSSL_INLINE void boringssl_ensure_hasheddsa_self_test(void) {}
+OPENSSL_INLINE int boringssl_ensure_rsa_self_test(void) { return 1; }
+OPENSSL_INLINE int boringssl_ensure_ecc_self_test(void) { return 1; }
+OPENSSL_INLINE int boringssl_ensure_ffdh_self_test(void) { return 1; }
+OPENSSL_INLINE int boringssl_ensure_ml_kem_self_test(void) { return 1; }
+OPENSSL_INLINE int boringssl_ensure_ml_dsa_self_test(void) { return 1; }
+OPENSSL_INLINE int boringssl_ensure_eddsa_self_test(void) { return 1; }
+OPENSSL_INLINE int boringssl_ensure_hasheddsa_self_test(void) { return 1; }
 
 // Outside of FIPS mode AWS_LC_FIPS_failure simply logs the message to stderr
 void AWS_LC_FIPS_failure(const char* message);

@@ -149,7 +149,9 @@ int ecdsa_do_verify_no_self_test(const uint8_t *digest, size_t digest_len,
 
 int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
                     const ECDSA_SIG *sig, const EC_KEY *eckey) {
-  boringssl_ensure_ecc_self_test();
+  if (!boringssl_ensure_ecc_self_test()) {
+    return 0;
+  }
 
   return ecdsa_do_verify_no_self_test(digest, digest_len, sig, eckey);
 }
@@ -251,7 +253,9 @@ ECDSA_SIG *ecdsa_sign_with_nonce_for_known_answer_test(const uint8_t *digest,
 ECDSA_SIG *ECDSA_sign_with_nonce_and_leak_private_key_for_testing(
     const uint8_t *digest, size_t digest_len, const EC_KEY *eckey,
     const uint8_t *nonce, size_t nonce_len) {
-  boringssl_ensure_ecc_self_test();
+  if (!boringssl_ensure_ecc_self_test()) {
+    return NULL;
+  }
 
   return ecdsa_sign_with_nonce_for_known_answer_test(digest, digest_len, eckey,
                                                      nonce, nonce_len);
@@ -259,7 +263,9 @@ ECDSA_SIG *ECDSA_sign_with_nonce_and_leak_private_key_for_testing(
 
 ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
                          const EC_KEY *eckey) {
-  boringssl_ensure_ecc_self_test();
+  if (!boringssl_ensure_ecc_self_test()) {
+    return NULL;
+  }
 
   if (eckey->eckey_method && eckey->eckey_method->sign_sig) {
     return eckey->eckey_method->sign_sig(digest, (int)digest_len, NULL, NULL,

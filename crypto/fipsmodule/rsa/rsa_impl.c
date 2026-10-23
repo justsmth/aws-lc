@@ -478,7 +478,9 @@ err:
 int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
-  boringssl_ensure_rsa_self_test();
+  if (!boringssl_ensure_rsa_self_test()) {
+    return 0;
+  }
   return rsa_verify_raw_no_self_test(rsa, out_len, out, max_out, in, in_len,
                                      padding);
 }
@@ -1149,7 +1151,9 @@ static void replace_bn_mont_ctx(BN_MONT_CTX **out, BN_MONT_CTX **in) {
 static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
                                           const BIGNUM *e_value, BN_GENCB *cb,
                                           int check_fips) {
-  boringssl_ensure_rsa_self_test();
+  if (!boringssl_ensure_rsa_self_test()) {
+    return 0;
+  }
   SET_DIT_AUTO_RESET;
 
   RSA *tmp = NULL;

@@ -2447,6 +2447,19 @@ err:
 
 #if defined(BORINGSSL_FIPS)
 
+// boringssl_ensure_self_test runs |run| once per process via |once| and then
+// reports whether the module may provide the service that called it. |run|
+// calls |AWS_LC_FIPS_failure| if its KAT fails, which puts the module into the
+// error state; in the default build that aborts, but with a FIPS failure
+// callback it returns. Checking the error state after |CRYPTO_once| therefore
+// covers both a failure of this algorithm's KAT (the once completing does not
+// mean the KAT passed) and a failure reported earlier by any other test. The
+// result is sticky: a failed KAT is never re-run.
+static int boringssl_ensure_self_test(CRYPTO_once_t *once, void (*run)(void)) {
+  CRYPTO_once(once, run);
+  return !AWS_LC_FIPS_service_blocked();
+}
+
 static void run_self_test_rsa(void) {
   if (!boringssl_self_test_rsa()) {
     AWS_LC_FIPS_failure("RSA self tests failed");
@@ -2455,8 +2468,9 @@ static void run_self_test_rsa(void) {
 
 DEFINE_STATIC_ONCE(g_self_test_once_rsa);
 
-void boringssl_ensure_rsa_self_test(void) {
-  CRYPTO_once(g_self_test_once_rsa_bss_get(), run_self_test_rsa);
+int boringssl_ensure_rsa_self_test(void) {
+  return boringssl_ensure_self_test(g_self_test_once_rsa_bss_get(),
+                                    run_self_test_rsa);
 }
 
 static void run_self_test_ecc(void) {
@@ -2467,8 +2481,9 @@ static void run_self_test_ecc(void) {
 
 DEFINE_STATIC_ONCE(g_self_test_once_ecc);
 
-void boringssl_ensure_ecc_self_test(void) {
-  CRYPTO_once(g_self_test_once_ecc_bss_get(), run_self_test_ecc);
+int boringssl_ensure_ecc_self_test(void) {
+  return boringssl_ensure_self_test(g_self_test_once_ecc_bss_get(),
+                                    run_self_test_ecc);
 }
 
 static void run_self_test_ffdh(void) {
@@ -2479,8 +2494,9 @@ static void run_self_test_ffdh(void) {
 
 DEFINE_STATIC_ONCE(g_self_test_once_ffdh);
 
-void boringssl_ensure_ffdh_self_test(void) {
-  CRYPTO_once(g_self_test_once_ffdh_bss_get(), run_self_test_ffdh);
+int boringssl_ensure_ffdh_self_test(void) {
+  return boringssl_ensure_self_test(g_self_test_once_ffdh_bss_get(),
+                                    run_self_test_ffdh);
 }
 
 static void run_self_test_ml_kem(void) {
@@ -2491,8 +2507,9 @@ static void run_self_test_ml_kem(void) {
 
 DEFINE_STATIC_ONCE(g_self_test_once_ml_kem);
 
-void boringssl_ensure_ml_kem_self_test(void) {
-  CRYPTO_once(g_self_test_once_ml_kem_bss_get(), run_self_test_ml_kem);
+int boringssl_ensure_ml_kem_self_test(void) {
+  return boringssl_ensure_self_test(g_self_test_once_ml_kem_bss_get(),
+                                    run_self_test_ml_kem);
 }
 
 static void run_self_test_ml_dsa(void) {
@@ -2503,8 +2520,9 @@ static void run_self_test_ml_dsa(void) {
 
 DEFINE_STATIC_ONCE(g_self_test_once_ml_dsa);
 
-void boringssl_ensure_ml_dsa_self_test(void) {
-  CRYPTO_once(g_self_test_once_ml_dsa_bss_get(), run_self_test_ml_dsa);
+int boringssl_ensure_ml_dsa_self_test(void) {
+  return boringssl_ensure_self_test(g_self_test_once_ml_dsa_bss_get(),
+                                    run_self_test_ml_dsa);
 }
 
 static void run_self_test_eddsa(void) {
@@ -2515,8 +2533,9 @@ static void run_self_test_eddsa(void) {
 
 DEFINE_STATIC_ONCE(g_self_test_once_eddsa);
 
-void boringssl_ensure_eddsa_self_test(void) {
-  CRYPTO_once(g_self_test_once_eddsa_bss_get(), run_self_test_eddsa);
+int boringssl_ensure_eddsa_self_test(void) {
+  return boringssl_ensure_self_test(g_self_test_once_eddsa_bss_get(),
+                                    run_self_test_eddsa);
 }
 
 static void run_self_test_hasheddsa(void) {
@@ -2527,8 +2546,9 @@ static void run_self_test_hasheddsa(void) {
 
 DEFINE_STATIC_ONCE(g_self_test_once_hasheddsa);
 
-void boringssl_ensure_hasheddsa_self_test(void) {
-  CRYPTO_once(g_self_test_once_hasheddsa_bss_get(), run_self_test_hasheddsa);
+int boringssl_ensure_hasheddsa_self_test(void) {
+  return boringssl_ensure_self_test(g_self_test_once_hasheddsa_bss_get(),
+                                    run_self_test_hasheddsa);
 }
 
 #endif  // BORINGSSL_FIPS
