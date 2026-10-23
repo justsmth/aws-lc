@@ -53,4 +53,14 @@ int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *in_count) {
   }
 }
 
+uint32_t CRYPTO_atomic_load_u32(const CRYPTO_atomic_u32 *in_val) {
+  const _Atomic CRYPTO_atomic_u32 *val = (const _Atomic CRYPTO_atomic_u32 *)in_val;
+  return atomic_load(val);
+}
+
+void CRYPTO_atomic_store_u32(CRYPTO_atomic_u32 *in_val, uint32_t desired) {
+  _Atomic CRYPTO_atomic_u32 *val = (_Atomic CRYPTO_atomic_u32 *)in_val;
+  atomic_store(val, desired);
+}
+
 #endif  // OPENSSL_C11_ATOMIC

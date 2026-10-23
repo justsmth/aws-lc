@@ -75,4 +75,12 @@ int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *in_count) {
   }
 }
 
+uint32_t CRYPTO_atomic_load_u32(const CRYPTO_atomic_u32 *in_val) {
+  return atomic_load_u32((volatile LONG *)in_val);
+}
+
+void CRYPTO_atomic_store_u32(CRYPTO_atomic_u32 *in_val, uint32_t desired) {
+  InterlockedExchange((volatile LONG *)in_val, (LONG)desired);
+}
+
 #endif  // OPENSSL_WINDOWS_ATOMIC

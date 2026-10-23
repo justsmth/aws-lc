@@ -437,6 +437,8 @@ static const char *err_reason_error_string(uint32_t packed_error) {
         return "internal error";
       case ERR_R_OVERFLOW:
         return "overflow";
+      case ERR_R_FIPS_MODULE_ERROR_STATE:
+        return "FIPS module is in the error state";
       default:
         return NULL;
     }

@@ -39,4 +39,17 @@ int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count) {
   return ret;
 }
 
+uint32_t CRYPTO_atomic_load_u32(const CRYPTO_atomic_u32 *val) {
+  CRYPTO_STATIC_MUTEX_lock_read(&g_refcount_lock);
+  const uint32_t ret = *val;
+  CRYPTO_STATIC_MUTEX_unlock_read(&g_refcount_lock);
+  return ret;
+}
+
+void CRYPTO_atomic_store_u32(CRYPTO_atomic_u32 *val, uint32_t desired) {
+  CRYPTO_STATIC_MUTEX_lock_write(&g_refcount_lock);
+  *val = desired;
+  CRYPTO_STATIC_MUTEX_unlock_write(&g_refcount_lock);
+}
+
 #endif  // !OPENSSL_C11_ATOMIC && !OPENSSL_WINDOWS_ATOMICS

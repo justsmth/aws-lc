@@ -525,6 +525,21 @@ OPENSSL_EXPORT void CRYPTO_refcount_inc(CRYPTO_refcount_t *count);
 // |CRYPTO_refcount_inc| on the same |CRYPTO_refcount_t|.
 OPENSSL_EXPORT int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count);
 
+// CRYPTO_atomic_u32 is a 32-bit value that is read and written atomically with
+// |CRYPTO_atomic_load_u32| and |CRYPTO_atomic_store_u32|. Like
+// |CRYPTO_refcount_t| it is declared as a plain |uint32_t| so that it can be
+// named from C++ and from code built without C11 atomics; the implementation
+// casts it to the platform's atomic type and uses the same backend (C11,
+// Windows interlocked functions, or a lock) as the reference counts above.
+typedef uint32_t CRYPTO_atomic_u32;
+
+// CRYPTO_atomic_load_u32 atomically reads |*val|.
+OPENSSL_EXPORT uint32_t CRYPTO_atomic_load_u32(const CRYPTO_atomic_u32 *val);
+
+// CRYPTO_atomic_store_u32 atomically writes |desired| to |*val|.
+OPENSSL_EXPORT void CRYPTO_atomic_store_u32(CRYPTO_atomic_u32 *val,
+                                            uint32_t desired);
+
 
 // Locks.
 //
@@ -1193,7 +1208,9 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 #if defined(BORINGSSL_FIPS)
 
 // AWS_LC_FIPS_failure is called when a FIPS power-on or continuous test
-// fails. The behavior depends on how AWS-LC is built:
+// fails. It always records the failure first by putting the module into the
+// error state (see |AWS_LC_FIPS_enter_error_state|). What happens next depends
+// on how AWS-LC is built:
 // - When AWS-LC is not in FIPS mode it prints |message| to |stderr|.
 // - If AWS-LC is built with FIPS it prints |message| to |stderr| and prevents
 //     any further cryptographic operations by the current process.
@@ -1202,7 +1219,10 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 //      the normal behavior FIPS behavior is used.
 // - If AWS-LC is built with FIPS, AWSLC_FIPS_FAILURE_CALLBACK, and the
 //      application defines the AWS_LC_fips_failure_callback function that
-//      function is called with |message|.
+//      function is called with |message| and |AWS_LC_FIPS_failure| returns.
+//      The module remains in the error state for the rest of the process
+//      lifetime, see |AWS_LC_fips_failure_detected| in crypto.h and
+//      FIPS.md.
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
 void AWS_LC_FIPS_failure(const char* message);
 #else
@@ -1212,6 +1232,18 @@ __declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
 void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
 #endif
 #endif
+
+// AWS_LC_FIPS_enter_error_state puts the module into the error state. The
+// error state is sticky: once entered it persists until the process exits and
+// |AWS_LC_fips_failure_detected| returns one. This is called by
+// |AWS_LC_FIPS_failure| before it reports the failure.
+void AWS_LC_FIPS_enter_error_state(void);
+
+// AWS_LC_FIPS_service_blocked returns zero if the module is not in the error
+// state. Otherwise it adds |ERR_R_FIPS_MODULE_ERROR_STATE| to the error queue
+// and returns one; the calling service must then fail without producing any
+// output.
+int AWS_LC_FIPS_service_blocked(void);
 // boringssl_self_test_startup runs all startup self tests and returns one on
 // success or zero on error. Startup self tests do not include lazy tests.
 // Call |BORINGSSL_self_test| to run every self test.

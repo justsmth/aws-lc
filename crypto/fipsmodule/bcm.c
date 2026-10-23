@@ -389,6 +389,9 @@ int BORINGSSL_integrity_test(void) {
 #endif  // !ASAN && !MSAN
 
 void AWS_LC_FIPS_failure(const char* message) {
+  // Record the failure before anything else so that the module is in the
+  // error state by the time the application (or the abort below) sees it.
+  AWS_LC_FIPS_enter_error_state();
 #if defined(AWSLC_FIPS_FAILURE_CALLBACK)
   if (AWS_LC_fips_failure_callback != NULL) {
     AWS_LC_fips_failure_callback(message);

@@ -295,6 +295,10 @@ OPENSSL_EXPORT int ERR_get_next_error_library(void);
 #define ERR_R_PASSED_NULL_PARAMETER (3 | ERR_R_FATAL)
 #define ERR_R_INTERNAL_ERROR (4 | ERR_R_FATAL)
 #define ERR_R_OVERFLOW (5 | ERR_R_FATAL)
+// ERR_R_FIPS_MODULE_ERROR_STATE is added by services that refuse to run because
+// the FIPS module has entered the error state. See
+// |AWS_LC_fips_failure_detected|.
+#define ERR_R_FIPS_MODULE_ERROR_STATE (6 | ERR_R_FATAL)
 
 
 // Deprecated functions.

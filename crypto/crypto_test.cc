@@ -121,6 +121,17 @@ TEST(Crypto, OnDemandIntegrityTest) {
 }
 #endif
 
+TEST(CryptoTest, FipsFailureDetected) {
+  // No self-test has failed in this process, so the module is not in the error
+  // state. This must also hold, and link, in non-FIPS builds.
+  EXPECT_EQ(0, AWS_LC_fips_failure_detected());
+#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN) && !defined(OPENSSL_MSAN)
+  EXPECT_EQ(1, FIPS_mode());
+#else
+  EXPECT_EQ(0, FIPS_mode());
+#endif
+}
+
 OPENSSL_DEPRECATED static void DeprecatedFunction() {}
 
 OPENSSL_BEGIN_ALLOW_DEPRECATED

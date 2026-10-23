@@ -103,8 +103,27 @@ OPENSSL_EXPORT void armv8_enable_dit(void);
 // FIPS monitoring
 
 // FIPS_mode returns zero unless BoringSSL is built with BORINGSSL_FIPS, in
-// which case it returns one.
+// which case it returns one. In a FIPS build it also returns zero once the
+// module has entered the error state, see |AWS_LC_fips_failure_detected|.
 OPENSSL_EXPORT int FIPS_mode(void);
+
+// AWS_LC_fips_failure_detected returns one if the FIPS module has entered the
+// error state in this process and zero otherwise. In builds without FIPS it
+// always returns zero.
+//
+// The module enters the error state when any power-on or conditional self-test
+// fails: the integrity test, a known-answer test (whether run at start-up or
+// lazily on first use of an algorithm), or a pairwise consistency test during
+// key generation. The state is sticky for the lifetime of the process; there is
+// no way to leave it other than restarting the process.
+//
+// In the default FIPS build a failure also aborts the process, so this
+// function can only be observed returning one when AWS-LC was built with
+// AWSLC_FIPS_FAILURE_CALLBACK and the application supplied an
+// |AWS_LC_fips_failure_callback| that returned. While in the error state
+// |FIPS_mode| returns zero. See crypto/fipsmodule/FIPS.md for the full
+// description of the error state.
+OPENSSL_EXPORT int AWS_LC_fips_failure_detected(void);
 
 // FIPS_is_entropy_cpu_jitter returns 1 if CPU jitter is used as the entropy source
 // for AWS-LC. Otherwise, returns 0;
