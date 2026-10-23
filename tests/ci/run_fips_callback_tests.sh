@@ -40,33 +40,91 @@ function maybe_run_fips_break_tests() {
   popd
 }
 
+# run_broken_test runs $1 (a crypto_test binary) with the FIPSCallback tests and
+# the given expected failure name. The test asserts that the module reported
+# the failure through the callback, failed the triggering operation, and then
+# stayed in the error state without aborting.
+function run_broken_test() {
+  local test_binary="$1"
+  local expected_failure="$2"
+  FIPS_CALLBACK_TEST_EXPECTED_FAILURE="${expected_failure}" \
+    "${test_binary}" --gtest_filter="FIPSCallback.*"
+}
+
+# expect_fatal_failure runs $1 and checks that the process invoked the FIPS
+# failure callback with each of the remaining arguments and then aborted
+# (SIGABRT, exit status 134) rather than continuing. This is the required
+# behaviour for integrity failures even when a callback is linked.
+function expect_fatal_failure() {
+  local test_binary="$1"
+  shift
+  local output status expected_message
+  set +e
+  output=$("${test_binary}" --gtest_filter="FIPSCallback.*" 2>&1 >/dev/null)
+  status=$?
+  set -e
+  echo "${output}"
+  if [[ "${status}" -ne 134 ]]; then
+    echo "Expected ${test_binary} to abort with SIGABRT (134) but it exited with ${status}"
+    exit 1
+  fi
+  for expected_message in "$@"; do
+    if ! echo "${output}" | grep -q "AWS_LC_fips_failure_callback: ${expected_message}"; then
+      echo "Callback was not invoked with '${expected_message}' before the abort"
+      exit 1
+    fi
+  done
+  if ! echo "${output}" | grep -q "AWS-LC FIPS failure caused by:"; then
+    echo "Fatal failure was not reported on stderr before the abort"
+    exit 1
+  fi
+}
+
 function run_all_break_tests() {
   original_test="${BUILD_ROOT}/crypto/crypto_test"
   broken_test="${BUILD_ROOT}/crypto/crypto_test_broken"
 
-  # By default the test should pass
-  $original_test --gtest_filter=FIPSCallback.PowerOnSelfTests
-  $original_test --gtest_filter=FIPSCallback.PWCT
+  # By default the test should pass and the callback must never be invoked
+  $original_test --gtest_filter="FIPSCallback.*"
 
   # Break the tests
   KATS=$(go run "${SRC_ROOT}/util/fipstools/break-kat.go" --list-tests)
   for kat in $KATS; do
     go run "${SRC_ROOT}/util/fipstools/break-kat.go" "$original_test" "$kat" > "$broken_test"
     chmod +x "$broken_test"
-    export FIPS_CALLBACK_TEST_EXPECTED_FAILURE="$kat"
-    # When a callback is defined AWS-LC will not abort and the test should exit successfully
-    $broken_test --gtest_filter=FIPSCallback.PowerOnSelfTests
-    unset FIPS_CALLBACK_TEST_EXPECTED_FAILURE
+    case "$kat" in
+      SHA-256|HMAC-SHA-256)
+        # These are the CASTs that guard the integrity test. Breaking them
+        # fails the integrity test, which is fatal regardless of the callback.
+        expect_fatal_failure "$broken_test" "${kat} KAT failed." "Integrity test failed"
+        ;;
+      *)
+        # When a callback is defined AWS-LC does not abort; the module enters
+        # the error state and the test checks the post-failure behaviour.
+        run_broken_test "$broken_test" "$kat"
+        ;;
+    esac
   done
 
   for TEST in RSA_PWCT EC_PWCT EDDSA_PWCT MLKEM_PWCT MLDSA_PWCT; do
-      export FIPS_CALLBACK_TEST_EXPECTED_FAILURE="${TEST}"
       export BORINGSSL_FIPS_BREAK_TEST="${TEST}"
-      $original_test --gtest_filter=FIPSCallback.PWCT
-      unset FIPS_CALLBACK_TEST_EXPECTED_FAILURE
+      run_broken_test "$original_test" "${TEST}"
       unset BORINGSSL_FIPS_BREAK_TEST
   done
 
+}
+
+# run_integrity_break_test corrupts the FIPS module inside crypto_test with
+# break-hash.go so that the real integrity hash check fails at power-on, and
+# checks that the callback is invoked and the process still aborts. This needs
+# a build without BORINGSSL_FIPS_BREAK_TESTS, where the hash check is enforced.
+function run_integrity_break_test() {
+  original_test="${BUILD_ROOT}/crypto/crypto_test"
+  broken_test="${BUILD_ROOT}/crypto/crypto_test_broken_hash"
+
+  go run "${SRC_ROOT}/util/fipstools/break-hash.go" "$original_test" "$broken_test"
+  chmod +x "$broken_test"
+  expect_fatal_failure "$broken_test" "FIPS integrity test failed." "Integrity test failed"
 }
 
 echo "Testing AWS-LC static breakable build with custom callback and Jitter enabled"
@@ -99,3 +157,4 @@ build_and_test -DCMAKE_BUILD_TYPE=Release \
 
 maybe_run_fips_tests
 # Can't run maybe_run_fips_break_tests or run_all_break_tests since they require BORINGSSL_FIPS_BREAK_TESTS
+run_integrity_break_test
